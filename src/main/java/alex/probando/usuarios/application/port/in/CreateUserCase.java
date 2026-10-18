@@ -4,5 +4,4 @@ import alex.probando.usuarios.domain.Usuario;
 
 public interface CreateUserCase {
     Usuario createUser(Usuario usuario);
-
 }

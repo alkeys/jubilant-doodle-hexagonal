@@ -47,7 +47,12 @@ public class UsuarioController {
 
         Usuario usuario = UsuarioMapper.toDomain(request);
         Usuario createdUsuario = createUserCase.createUser(usuario);
-
         return UsuarioMapper.toResponse(createdUsuario);
     }
+
+ 
+
+
+
+    
 }

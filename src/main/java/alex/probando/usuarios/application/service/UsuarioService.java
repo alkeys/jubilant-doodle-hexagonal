@@ -1,5 +1,8 @@
 package alex.probando.usuarios.application.service;
 
+import java.util.UUID;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,5 +26,11 @@ public class UsuarioService implements CreateUserCase {
             throw new IllegalArgumentException("El usuario no puede ser nulo");
         }
         return usuarioRepositoryPort.save(usuario);
+
     }
+
+   
+
+  
+
 }

@@ -1,11 +1,14 @@
 package alex.probando.usuarios.infra.adapter.out.persistence.jpa.mapper;
 
+import org.springframework.stereotype.Component;
+
 import alex.probando.usuarios.domain.Usuario;
 import alex.probando.usuarios.infra.adapter.out.persistence.jpa.entity.UsuarioEntity;
 
+@Component 
 public class UsuarioJpaMapper {
 
-    public static UsuarioEntity toEntity(Usuario usuario) {
+    public  UsuarioEntity toEntity(Usuario usuario) {
         if (usuario == null) {
             return null;
         }
@@ -19,7 +22,8 @@ public class UsuarioJpaMapper {
     }
 
 
-    public static Usuario toDomain(UsuarioEntity entity) {
+
+    public  Usuario toDomain(UsuarioEntity entity) {
         if (entity == null) {
             return null;
         }
