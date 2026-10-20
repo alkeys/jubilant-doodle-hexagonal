@@ -22,6 +22,11 @@ public record UsuarioResponse(
         example = "Juan Carlos"
     )
     String nombre,
+    @Schema(
+        description = "Nombre de usuario único",
+        example = "juanbodoque"
+    )
+    String nombreDeUsuario,
 
     @Schema(
         description = "Apellido del usuario",

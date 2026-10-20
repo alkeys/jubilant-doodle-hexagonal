@@ -10,6 +10,7 @@ public class UsuarioMapper {
         return new UsuarioResponse(
             usuario.id().toString(),
             usuario.nombre().toString(),
+            usuario.NombreDeUsuario(),
             usuario.apellido(),
             usuario.email(),
             usuario.edad()
@@ -20,9 +21,13 @@ public class UsuarioMapper {
         return new Usuario(
             null,
             request.getNombre(),
+            request.getNombreDeUsuario(),
             request.getApellido(),
             request.getEmail(),
-            request.getEdad()
+            request.getEdad(),
+            true, // Asumiendo que el usuario está activo por defecto al crearlo
+            
+            request.getPassword()
         );
     }
     

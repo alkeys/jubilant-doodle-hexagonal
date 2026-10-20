@@ -37,5 +37,21 @@ public class UsuarioEntity {
     @Column (name = "edad", nullable = false, columnDefinition = "int default 0")
     private int edad;
 
+    @Column (name = "activo", nullable = false, columnDefinition = "boolean default true")
+    private boolean activo;
+
+    @Column (name = "password", nullable = false)
+    private String password;
+
+    @Column (name = "nombre_de_usuario", nullable = false, unique = true)
+    private String nombreDeUsuario;
+
+
+
+    public boolean getActivo() {
+        return activo;
+    }
+    
+
 
 }

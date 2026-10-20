@@ -29,4 +29,10 @@ public class UsuarioRequest {
     @NotNull(message = "La edad es obligatoria")
     @Min(value = 0, message = "La edad no puede ser negativa")
     private Integer edad;
+    @Schema(description = "Nombre de usuario único", example = "juanbodoque")
+    @NotBlank(message = "El nombre de usuario no puede ser nulo, vacío o contener solo espacios")
+    private String nombreDeUsuario;
+    @Schema(description = "Contraseña del usuario", example = "MiContraseñaSegura123")
+    @NotBlank(message = "La contraseña no puede ser nula, vacía o contener solo espacios")
+    private String password;
 }

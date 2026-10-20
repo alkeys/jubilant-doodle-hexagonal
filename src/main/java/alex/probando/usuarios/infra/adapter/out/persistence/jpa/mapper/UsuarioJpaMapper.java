@@ -18,6 +18,9 @@ public class UsuarioJpaMapper {
         entity.setApellido(usuario.apellido());
         entity.setEmail(usuario.email());
         entity.setEdad(usuario.edad());
+        entity.setPassword(usuario.password());
+        entity.setNombreDeUsuario(usuario.NombreDeUsuario());
+        entity.setActivo(usuario.activo());
         return entity;
     }
 
@@ -27,7 +30,9 @@ public class UsuarioJpaMapper {
         if (entity == null) {
             return null;
         }
-        return new Usuario(entity.getId(), entity.getNombre(), entity.getApellido(), entity.getEmail(),entity.getEdad());
+        return new Usuario(entity.getId(), entity.getNombre(),
+        entity.getNombreDeUsuario(), entity.getApellido(), entity.getEmail()
+        ,entity.getEdad(), entity.getActivo(), entity.getPassword());
     }
     
 }

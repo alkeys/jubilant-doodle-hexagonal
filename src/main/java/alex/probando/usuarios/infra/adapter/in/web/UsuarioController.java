@@ -1,6 +1,7 @@
 
 package alex.probando.usuarios.infra.adapter.in.web;
 
+import alex.probando.shared.exception.ErrorResponse;
 import alex.probando.usuarios.application.port.in.CreateUserCase;
 import alex.probando.usuarios.domain.Usuario;
 import alex.probando.usuarios.infra.adapter.in.web.dto.UsuarioMapper;
@@ -38,7 +39,7 @@ public class UsuarioController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Usuario creado exitosamente"),
             @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos: revisa el campo indicado en el mensaje de error"),
-            @ApiResponse(responseCode = "409", description = "El email ya está registrado", content = @Content(schema = @Schema(implementation = ApiExceptionHandler.ErrorResponse.class)))
+            @ApiResponse(responseCode = "409", description = "El email ya está registrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
