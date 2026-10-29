@@ -1,5 +1,8 @@
 package alex.probando.usuarios.domain;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public record Usuario(
@@ -10,10 +13,10 @@ public record Usuario(
         String email,
         int edad,
         boolean activo,
-        String password) {
+        String password,
+        Set<Role> roles) {
 
     public Usuario {
-
         if (apellido == null || apellido.isBlank()) {
             throw new IllegalArgumentException("El apellido no puede ser nulo o vacío");
         }
@@ -29,13 +32,22 @@ public record Usuario(
         if (NombreDeUsuario == null || NombreDeUsuario.isBlank()) {
             throw new IllegalArgumentException("El nombre de usuario no puede ser nulo o vacío");
         }
-        if (activo == false) {
-            throw new IllegalArgumentException("El usuario no puede ser inactivo");
+        if (roles == null) {
+            roles = Collections.emptySet();
+        } else {
+            roles = Collections.unmodifiableSet(new HashSet<>(roles));
         }
     }
 
-    public Usuario(String nombre,String NombreDeUsuario, String apellido, String email, int edad, boolean activo, String password) {
-        this(null, nombre, NombreDeUsuario, apellido, email, edad, activo, password);
+    public Usuario(UUID id, String nombre, String NombreDeUsuario, String apellido, String email, int edad, boolean activo, String password) {
+        this(id, nombre, NombreDeUsuario, apellido, email, edad, activo, password, Set.of(new Role(Role.CLIENTE)));
     }
 
+    public Usuario(String nombre, String NombreDeUsuario, String apellido, String email, int edad, boolean activo, String password) {
+        this(null, nombre, NombreDeUsuario, apellido, email, edad, activo, password, Set.of(new Role(Role.CLIENTE)));
+    }
+
+    public Usuario(String nombre, String NombreDeUsuario, String apellido, String email, int edad, boolean activo, String password, Set<Role> roles) {
+        this(null, nombre, NombreDeUsuario, apellido, email, edad, activo, password, roles);
+    }
 }

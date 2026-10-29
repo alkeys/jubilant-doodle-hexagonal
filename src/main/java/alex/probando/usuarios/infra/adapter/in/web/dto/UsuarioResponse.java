@@ -1,5 +1,6 @@
-
 package alex.probando.usuarios.infra.adapter.in.web.dto;
+
+import java.util.Set;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -10,39 +11,28 @@ import lombok.Builder;
 )
 @Builder
 public record UsuarioResponse(
-
-    @Schema(
-        description = "Identificador único (UUID)",
-        example = "123e4567-e89b-12d3-a456-426614174000"
-    )
+    @Schema(description = "Identificador único (UUID)", example = "123e4567-e89b-12d3-a456-426614174000")
     String id,
 
-    @Schema(
-        description = "Nombre del usuario",
-        example = "Juan Carlos"
-    )
+    @Schema(description = "Nombre del usuario", example = "Juan Carlos")
     String nombre,
-    @Schema(
-        description = "Nombre de usuario único",
-        example = "juanbodoque"
-    )
+
+    @Schema(description = "Nombre de usuario único", example = "juanbodoque")
     String nombreDeUsuario,
 
-    @Schema(
-        description = "Apellido del usuario",
-        example = "Bodoque"
-    )
+    @Schema(description = "Apellido del usuario", example = "Bodoque")
     String apellido,
 
-    @Schema(
-        description = "Correo electrónico del usuario",
-        example = "juan.bodoque@example.com"
-    )
+    @Schema(description = "Correo electrónico del usuario", example = "juan.bodoque@example.com")
     String email,
-    @Schema(
-        description = "Edad del usuario",
-        example = "30"
-    )
-    int edad
+
+    @Schema(description = "Edad del usuario", example = "30")
+    int edad,
+
+    @Schema(description = "Estado activo del usuario", example = "true")
+    boolean activo,
+
+    @Schema(description = "Roles asignados al usuario", example = "[\"CLIENTE\"]")
+    Set<String> roles
 ) {
 }

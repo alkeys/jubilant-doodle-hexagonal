@@ -1,14 +1,21 @@
 package alex.probando.usuarios.infra.adapter.out.persistence.jpa.mapper;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 
+import alex.probando.usuarios.domain.Role;
 import alex.probando.usuarios.domain.Usuario;
+import alex.probando.usuarios.infra.adapter.out.persistence.jpa.entity.RoleEntity;
 import alex.probando.usuarios.infra.adapter.out.persistence.jpa.entity.UsuarioEntity;
 
-@Component 
+@Component
 public class UsuarioJpaMapper {
 
-    public  UsuarioEntity toEntity(Usuario usuario) {
+    public UsuarioEntity toEntity(Usuario usuario) {
         if (usuario == null) {
             return null;
         }
@@ -21,18 +28,39 @@ public class UsuarioJpaMapper {
         entity.setPassword(usuario.password());
         entity.setNombreDeUsuario(usuario.NombreDeUsuario());
         entity.setActivo(usuario.activo());
+        
+        if (usuario.roles() != null) {
+            Set<RoleEntity> roleEntities = usuario.roles().stream()
+                    .map(r -> new RoleEntity(r.id(), r.nombre()))
+                    .collect(Collectors.toSet());
+            entity.setRoles(roleEntities);
+        } else {
+            entity.setRoles(new HashSet<>());
+        }
         return entity;
     }
 
-
-
-    public  Usuario toDomain(UsuarioEntity entity) {
+    public Usuario toDomain(UsuarioEntity entity) {
         if (entity == null) {
             return null;
         }
-        return new Usuario(entity.getId(), entity.getNombre(),
-        entity.getNombreDeUsuario(), entity.getApellido(), entity.getEmail()
-        ,entity.getEdad(), entity.getActivo(), entity.getPassword());
+        Set<Role> roles = Collections.emptySet();
+        if (entity.getRoles() != null) {
+            roles = entity.getRoles().stream()
+                    .map(re -> new Role(re.getId(), re.getNombre()))
+                    .collect(Collectors.toSet());
+        }
+
+        return new Usuario(
+                entity.getId(),
+                entity.getNombre(),
+                entity.getNombreDeUsuario(),
+                entity.getApellido(),
+                entity.getEmail(),
+                entity.getEdad(),
+                entity.getActivo(),
+                entity.getPassword(),
+                roles
+        );
     }
-    
 }

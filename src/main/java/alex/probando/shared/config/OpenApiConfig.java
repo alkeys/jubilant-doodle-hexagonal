@@ -17,6 +17,9 @@ public class OpenApiConfig {
     public static final String COOKIE_AUTH_SCHEME = "cookieAuth";
     public static final String BEARER_AUTH_SCHEME = "bearerAuth";
 
+    @org.springframework.beans.factory.annotation.Value("${application.security.jwt.cookie-name:access_token}")
+    private String cookieName;
+
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
@@ -36,11 +39,11 @@ public class OpenApiConfig {
                         .addList(BEARER_AUTH_SCHEME))
                 .components(new Components()
                         .addSecuritySchemes(COOKIE_AUTH_SCHEME, new SecurityScheme()
-                                .name("access_token")
+                                .name(cookieName)
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.COOKIE)
                                 .description(
-                                        "Cookie HttpOnly 'access_token' enviada automáticamente por el navegador tras iniciar sesión"))
+                                        "Cookie HttpOnly configurada automáticamente tras iniciar sesión"))
                         .addSecuritySchemes(BEARER_AUTH_SCHEME, new SecurityScheme()
                                 .name(BEARER_AUTH_SCHEME)
                                 .type(SecurityScheme.Type.HTTP)
