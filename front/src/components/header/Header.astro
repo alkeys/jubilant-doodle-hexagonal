@@ -1,0 +1,220 @@
+---
+// src/components/header/Header.astro
+import HeaderLogo from "./HeaderLogo.astro";
+import NavLink from "./NavLink.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+import { navItems } from "../../data/site";
+
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+    if (href === "/") return currentPath === "/";
+    return currentPath === href || currentPath.startsWith(href);
+}
+---
+
+<header
+    class="w-full sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200"
+>
+    <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4"
+    >
+        <!-- Logotipo de la Tienda -->
+        <div class="flex items-center">
+            <HeaderLogo />
+        </div>
+
+        <!-- Navegación de Escritorio (Desktop) -->
+        <nav
+            class="hidden md:flex items-center gap-1 lg:gap-2"
+            aria-label="Navegación principal"
+        >
+            {
+                navItems.map((item) => (
+                    <NavLink
+                        href={item.href}
+                        text={item.label}
+                        icon={item.icon}
+                        isActive={isActive(item.href)}
+                    />
+                ))
+            }
+        </nav>
+
+        <!-- Acciones a la Derecha (Desktop) -->
+        <div class="hidden md:flex items-center gap-3">
+            <!-- Alternar tema (Dark / Light) -->
+            <ThemeToggle />
+
+            <!-- Separador vertical -->
+            <div class="h-5 w-px bg-slate-200 dark:bg-slate-800"></div>
+
+            <!-- Botón CTA -->
+            <a
+                href="/shop/"
+                class="group relative inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#ff2638] hover:bg-[#e01f30] shadow-sm shadow-red-500/20 hover:shadow-md hover:shadow-red-500/30 transition-all duration-200 active:scale-95"
+            >
+                <svg
+                    class="size-4 transition-transform group-hover:scale-110"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span>Comprar Ahora</span>
+            </a>
+        </div>
+
+        <!-- Botón Menú Móvil (Hamburguesa) -->
+        <div class="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            <button
+                type="button"
+                class="navbar-burger p-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ff2638] transition-colors"
+                aria-label="Abrir menú"
+                aria-expanded="false"
+                aria-controls="mobile-menu"
+                id="navbar-burger-btn"
+            >
+                <!-- Icono Hamburguesa (cuando está cerrado) -->
+                <svg
+                    class="burger-icon-open size-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M4 6h16M4 12h16M4 18h16"
+                    />
+                </svg>
+                <!-- Icono X (cuando está abierto) -->
+                <svg
+                    class="burger-icon-close size-6 hidden"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                    />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Menú Desplegable Móvil -->
+    <div
+        id="mobile-menu"
+        class="hidden md:hidden border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl px-4 pt-3 pb-6 shadow-2xl transition-all"
+    >
+        <nav class="flex flex-col gap-1 mb-4" aria-label="Navegación móvil">
+            {
+                navItems.map((item) => (
+                    <NavLink
+                        href={item.href}
+                        text={item.label}
+                        icon={item.icon}
+                        isActive={isActive(item.href)}
+                    />
+                ))
+            }
+        </nav>
+
+        <div class="pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+            <a
+                href="/shop/"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#ff2638] hover:bg-[#e01f30] shadow-sm shadow-red-500/25 transition-all text-center"
+            >
+                <svg
+                    class="size-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span>Comprar Ahora</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<script>
+    function setupMobileMenu() {
+        const burgerBtn = document.getElementById("navbar-burger-btn");
+        const mobileMenu = document.getElementById("mobile-menu");
+        if (!burgerBtn || !mobileMenu) return;
+
+        const iconOpen = burgerBtn.querySelector(".burger-icon-open");
+        const iconClose = burgerBtn.querySelector(".burger-icon-close");
+
+        const toggleMenu = (open?: boolean) => {
+            const isCurrentlyOpen = burgerBtn.getAttribute("aria-expanded") === "true";
+            const willOpen = typeof open === "boolean" ? open : !isCurrentlyOpen;
+
+            burgerBtn.setAttribute("aria-expanded", String(willOpen));
+            burgerBtn.setAttribute("aria-label", willOpen ? "Cerrar menú" : "Abrir menú");
+
+            if (willOpen) {
+                mobileMenu.classList.remove("hidden");
+                iconOpen?.classList.add("hidden");
+                iconClose?.classList.remove("hidden");
+            } else {
+                mobileMenu.classList.add("hidden");
+                iconOpen?.classList.remove("hidden");
+                iconClose?.classList.add("hidden");
+            }
+        };
+
+        // Clonar botón para eliminar listeners anteriores al usar transiciones de página
+        const newBurger = burgerBtn.cloneNode(true) as HTMLElement;
+        burgerBtn.parentNode?.replaceChild(newBurger, burgerBtn);
+
+        newBurger.addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        // Cerrar al hacer clic en un enlace o fuera del menú
+        document.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+            if (mobileMenu && !mobileMenu.contains(target) && !newBurger.contains(target)) {
+                toggleMenu(false);
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                toggleMenu(false);
+                newBurger.focus();
+            }
+        });
+    }
+
+    setupMobileMenu();
+    document.addEventListener("astro:after-swap", setupMobileMenu);
+</script>

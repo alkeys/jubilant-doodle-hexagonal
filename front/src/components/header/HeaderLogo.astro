@@ -1,0 +1,41 @@
+---
+// src/components/header/HeaderLogo.astro
+import { site } from "../../data/site";
+
+interface Props {
+    name?: string;
+}
+
+const { name = site.name } = Astro.props;
+---
+
+<div class="flex items-center">
+    <a
+        href="/"
+        class="inline-flex items-center gap-2.5 group focus:outline-none focus:ring-2 focus:ring-[#ff2638] rounded-lg px-1.5 py-1 transition-all"
+        aria-label={`${name} home`}
+    >
+        <span class="relative flex items-center justify-center">
+            <span class="absolute inset-0 bg-[#ff2638]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <svg
+                class="h-7 w-7 text-[#ff2638] transition-transform duration-300 group-hover:scale-110 relative"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+        </span>
+        <span
+            class="font-medium tracking-tight text-xl font-sans text-slate-900 dark:text-white group-hover:text-[#ff2638] transition-colors"
+        >
+            {name}
+        </span>
+    </a>
+</div>
