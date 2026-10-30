@@ -18,7 +18,7 @@ public interface ProductoRepositoryPort {
     List<Producto> findProductosPrincipales(int pagina, int limite);
     void deleteById(UUID id);
 
-    void saveImagen(UUID productoId, ProductoImagen imagen);
+    ProductoImagen saveImagen(UUID productoId, ProductoImagen imagen);
     void deleteImagen(UUID productoId, UUID imagenId);
     Optional<ProductoImagen> findImagenById(UUID imagenId);
 }

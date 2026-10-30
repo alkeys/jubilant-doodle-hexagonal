@@ -2,8 +2,6 @@ package alex.probando.productos.domain;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -52,9 +50,11 @@ public record Producto(
             String descripcion,
             BigDecimal precio,
             int stock) {
-        this(null, tiendaId, categoriaId, nombre, descripcion, precio, stock, true, Instant.now(), Instant.now(), List.of());
+        this(null, tiendaId, categoriaId, nombre, descripcion, precio, stock, true, Instant.now(), Instant.now(),
+                List.of());
     }
 
+    // esta funcion se utilizara para actualizar las imagenes del producto
     public Producto withImagenes(List<ProductoImagen> nuevasImagenes) {
         return new Producto(
                 this.id,
@@ -67,7 +67,22 @@ public record Producto(
                 this.activo,
                 this.creadoEn,
                 Instant.now(),
-                nuevasImagenes
-        );
+                nuevasImagenes);
+    }
+
+    // esta funcion se utilizara para actualizar el stock del producto
+    public Producto withStock(int nuevoStock) {
+        return new Producto(
+                this.id,
+                this.tiendaId,
+                this.categoriaId,
+                this.nombre,
+                this.descripcion,
+                this.precio,
+                nuevoStock,
+                this.activo,
+                this.creadoEn,
+                Instant.now(),
+                this.imagenes);
     }
 }

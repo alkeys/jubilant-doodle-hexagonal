@@ -29,8 +29,7 @@ public class ProductoMapper {
                 domain.activo(),
                 imagenesResponse,
                 domain.creadoEn() != null ? domain.creadoEn().toString() : null,
-                domain.actualizadoEn() != null ? domain.actualizadoEn().toString() : null
-        );
+                domain.actualizadoEn() != null ? domain.actualizadoEn().toString() : null);
     }
 
     public static ProductoImagenResponse toResponse(ProductoImagen domain) {
@@ -41,9 +40,7 @@ public class ProductoMapper {
                 domain.id() != null ? domain.id().toString() : null,
                 domain.url(),
                 domain.esPrincipal(),
-                domain.orden(),
-                domain.creadoEn() != null ? domain.creadoEn().toString() : null
-        );
+                domain.orden());
     }
 
     public static Producto toDomain(ProductoRequest request) {
@@ -59,7 +56,6 @@ public class ProductoMapper {
                 activo,
                 Instant.now(),
                 Instant.now(),
-                List.of()
-        );
+                List.of());
     }
 }

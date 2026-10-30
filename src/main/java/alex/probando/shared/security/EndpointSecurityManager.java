@@ -39,6 +39,9 @@ public class EndpointSecurityManager {
             .requestMatchers(HttpMethod.GET, "/api/v1/productos/{id:[a-fA-F0-9\\-]+}").permitAll()
             .requestMatchers("/uploads/**").permitAll()
 
+            // Consulta pública de productos más vendidos (slider / catálogo)
+            .requestMatchers(HttpMethod.GET, "/api/v1/ventas/top-productos").permitAll()
+
             // ==========================================
             // 2. ENDPOINTS PARA CUALQUIER USUARIO AUTENTICADO (CLIENTE, RH, ADMIN)
             // Registrado antes de /{id} para que no sea absorbido como variable de ruta

@@ -85,17 +85,26 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
     }
 
     @Override
-    public void saveImagen(UUID productoId, ProductoImagen imagen) {
+    public ProductoImagen saveImagen(UUID productoId, ProductoImagen imagen) {
         ProductoEntity productoEntity = productoRepository.findById(productoId)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
 
         ProductoImagenEntity imagenEntity = mapper.toEntity(imagen);
         imagenEntity.setProducto(productoEntity);
-        imagenRepository.save(imagenEntity);
+        if (productoEntity.getImagenes() != null) {
+            productoEntity.getImagenes().add(imagenEntity);
+        }
+        ProductoImagenEntity guardada = imagenRepository.save(imagenEntity);
+        return mapper.toDomain(guardada);
     }
 
     @Override
     public void deleteImagen(UUID productoId, UUID imagenId) {
+        productoRepository.findById(productoId).ifPresent(p -> {
+            if (p.getImagenes() != null) {
+                p.getImagenes().removeIf(img -> imagenId.equals(img.getId()));
+            }
+        });
         imagenRepository.deleteById(imagenId);
     }
 

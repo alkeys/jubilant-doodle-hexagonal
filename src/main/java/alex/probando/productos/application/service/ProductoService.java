@@ -186,15 +186,15 @@ public class ProductoService implements
             }
 
             ProductoImagen imagen = new ProductoImagen(
-                    UUID.randomUUID(),
+                    null,
                     urlPublica,
                     esPrincipal,
                     ordenInicio + i,
                     Instant.now()
             );
 
-            productoRepositoryPort.saveImagen(productoId, imagen);
-            nuevasImagenes.add(imagen);
+            ProductoImagen guardada = productoRepositoryPort.saveImagen(productoId, imagen);
+            nuevasImagenes.add(guardada != null ? guardada : imagen);
         }
 
         return nuevasImagenes;

@@ -14,30 +14,32 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter 
-@AllArgsConstructor 
-@NoArgsConstructor 
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "usuarios")
 public class UsuarioEntity {
 
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "nombre", nullable = false)
     private String nombre;
-    
+
     @Column(name = "apellido", nullable = false)
     private String apellido;
 
     @Column(name = "email", nullable = false, unique = true)
+    @Email(message = "El formato del correo electrónico no es válido")
     private String email;
 
     @Column(name = "edad", nullable = false, columnDefinition = "int default 0")
@@ -53,11 +55,7 @@ public class UsuarioEntity {
     private String nombreDeUsuario;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "usuario_roles",
-        joinColumns = @JoinColumn(name = "usuario_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @JoinTable(name = "usuario_roles", joinColumns = @JoinColumn(name = "usuario_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<RoleEntity> roles = new HashSet<>();
 
     public boolean getActivo() {
