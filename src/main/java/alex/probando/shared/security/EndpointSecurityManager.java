@@ -33,6 +33,12 @@ public class EndpointSecurityManager {
             .requestMatchers(HttpMethod.GET, "/api/v1/categorias").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/v1/categorias/{id:[a-fA-F0-9\\-]+}").permitAll()
 
+            // Catálogo público de productos e imágenes estáticas
+            .requestMatchers(HttpMethod.GET, "/api/v1/productos").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/productos/principales").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/productos/{id:[a-fA-F0-9\\-]+}").permitAll()
+            .requestMatchers("/uploads/**").permitAll()
+
             // ==========================================
             // 2. ENDPOINTS PARA CUALQUIER USUARIO AUTENTICADO (CLIENTE, RH, ADMIN)
             // Registrado antes de /{id} para que no sea absorbido como variable de ruta
@@ -51,6 +57,12 @@ public class EndpointSecurityManager {
             .requestMatchers(HttpMethod.POST, "/api/v1/categorias").hasRole(Role.ADMIN)
             .requestMatchers(HttpMethod.PUT, "/api/v1/categorias/**").hasRole(Role.ADMIN)
             .requestMatchers(HttpMethod.DELETE, "/api/v1/categorias/**").hasRole(Role.ADMIN)
+
+            // Gestión de productos e imágenes de productos
+            .requestMatchers(HttpMethod.POST, "/api/v1/productos/**").hasRole(Role.ADMIN)
+            .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**").hasRole(Role.ADMIN)
+            .requestMatchers(HttpMethod.PATCH, "/api/v1/productos/**").hasRole(Role.ADMIN)
+            .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**").hasRole(Role.ADMIN)
             
             // Administración de usuarios
             .requestMatchers(HttpMethod.DELETE, "/api/v1/usuarios/**").hasRole(Role.ADMIN)
