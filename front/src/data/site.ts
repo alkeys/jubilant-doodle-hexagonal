@@ -25,3 +25,17 @@ export const navItems: NavItem[] = [
     { href: "/about/", label: "Acerca de nosotros", icon: "about" },
     { href: "/sign-in/", label: "Inicia Sesión", icon: "signin" },
 ];
+
+export interface FooterLink {
+    href: string;
+    label: string;
+}
+
+export const footerLinks: FooterLink[] = [
+    { href: "/terminos-y-condiciones/", label: "Términos y Condiciones" },
+    { href: "/politica-de-privacidad/", label: "Política de Privacidad" },
+    { href: "/contacto/", label: "Contacto" },
+];
+
+
+

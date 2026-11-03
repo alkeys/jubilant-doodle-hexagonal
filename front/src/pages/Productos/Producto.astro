@@ -1,0 +1,327 @@
+---
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+
+interface Props {
+    producto: ProductoResponse;
+}
+
+const { producto } = Astro.props;
+
+if (!producto) {
+    return Astro.redirect("/");
+}
+
+const imagenPrincipal =
+    producto.imagenes?.find((img) => img.esPrincipal) || producto.imagenes?.[0];
+
+const tieneRango =
+    producto.precioMin !== undefined &&
+    producto.precioMax !== undefined &&
+    producto.precioMin !== producto.precioMax;
+
+const tallas = producto.talla
+    ? producto.talla
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+    : ["ÚNICA"];
+
+const ACCS = [
+    ["Descripción de la pieza", producto.descripcion],
+    [
+        "Materiales y cuidado",
+        "Confección seleccionada de alta durabilidad. Lavar en ciclo suave o limpieza en seco según etiqueta.",
+    ],
+    [
+        "Envíos y devoluciones",
+        "Envío sin costo en pedidos mayores a $150. Cambios y devoluciones gratuitos en cualquiera de nuestras sucursales dentro de 30 días.",
+    ],
+];
+---
+
+<main class="mx-auto max-w-[1640px] px-4 pt-[110px] sm:px-5 sm:pt-[130px] lg:px-9">
+    <!-- Breadcrumb -->
+    <div class="cap-xs mb-6 flex items-center gap-2 text-muted sm:mb-8">
+        <a href="/" class="hover:text-ink">INICIO</a>
+        <span>/</span>
+        <a href="/#catalogo" class="hover:text-ink">CATÁLOGO</a>
+        <span>/</span>
+        <span class="text-ink">{producto.nombre.toUpperCase()}</span>
+    </div>
+
+    <article class="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <!-- Galería Editorial 3:4 -->
+        <div class="flex flex-col gap-2">
+            {imagenPrincipal && (
+                <img
+                    data-g-main
+                    src={imagenPrincipal.url}
+                    alt={producto.nombre}
+                    class="aspect-[3/4] w-full bg-tint object-cover"
+                />
+            )}
+            {
+                producto.imagenes && producto.imagenes.length > 1 && (
+                    <div class="flex gap-2">
+                        {producto.imagenes.map((im, i) => (
+                            <button
+                                data-g-thumb={im.url}
+                                class:list={[
+                                    "w-[72px] flex-none cursor-pointer border transition",
+                                    i === 0
+                                        ? "border-ink"
+                                        : "border-line opacity-80 hover:opacity-100",
+                                ]}
+                            >
+                                <img
+                                    src={im.url}
+                                    alt={producto.nombre}
+                                    class="aspect-[3/4] w-full object-cover"
+                                />
+                            </button>
+                        ))}
+                    </div>
+                )
+            }
+            <script is:inline>
+                (function () {
+                    var main = document.querySelector("[data-g-main]");
+                    document.addEventListener("click", function (e) {
+                        var b =
+                            e.target.closest &&
+                            e.target.closest("[data-g-thumb]");
+                        if (!b || !main) return;
+                        main.src = b.getAttribute("data-g-thumb");
+                        document
+                            .querySelectorAll("[data-g-thumb]")
+                            .forEach(function (x) {
+                                var on = x === b;
+                                x.classList.toggle("border-ink", on);
+                                x.classList.toggle("border-line", !on);
+                                x.classList.toggle("opacity-80", !on);
+                            });
+                    });
+                })();
+            </script>
+        </div>
+
+        <!-- Información del Producto -->
+        <div class="flex max-w-[560px] flex-col gap-6" data-pdp data-handle={producto.id}>
+            <div class="flex flex-col gap-3">
+                <span
+                    class="cap-xs w-fit px-2.5 py-1.5 text-white"
+                    style={`background:${tieneRango ? "#6f5bd6" : "#191936"}`}
+                >
+                    {tieneRango ? "MULTITIENDA" : "NEW IN"}
+                </span>
+
+                <div class="cap-xs text-muted">
+                    STOCK TOTAL DISPONIBLE: {producto.stockTotal ?? producto.stock} UNIDADES
+                </div>
+
+                <h1 class="m-0 text-[24px] font-normal tracking-[0.16em]">
+                    {producto.nombre.toUpperCase()}
+                </h1>
+
+                <div class="text-[16px] tracking-[0.05em]" data-pdp-price-display>
+                    {
+                        tieneRango ? (
+                            <span class="text-acc">
+                                ${producto.precioMin!.toFixed(2)} – $
+                                {producto.precioMax!.toFixed(2)}
+                            </span>
+                        ) : (
+                            <span>
+                                $
+                                {(
+                                    producto.precioMin ??
+                                    producto.precio ??
+                                    0
+                                ).toFixed(2)}
+                            </span>
+                        )
+                    }
+                </div>
+
+                <p class="m-0 text-[13px] leading-relaxed text-soft">
+                    {producto.descripcion}
+                </p>
+            </div>
+
+            <!-- Selector de Sucursal (Inventario y precio por tienda) -->
+            {
+                producto.tiendas && producto.tiendas.length > 0 && (
+                    <div class="flex flex-col gap-3">
+                        <div class="cap-xs text-muted">
+                            SUCURSAL SELECCIONADA —{" "}
+                            <span data-pdp-store-name class="text-ink">
+                                {producto.tiendas[0].tiendaNombre}
+                            </span>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            {producto.tiendas.map((tienda, idx) => (
+                                <button
+                                    type="button"
+                                    data-pdp-store={tienda.tiendaNombre}
+                                    data-pdp-store-price={tienda.precio.toFixed(2)}
+                                    class={`flex cursor-pointer items-center justify-between border px-4 py-3 text-left transition ${idx === 0 ? "border-ink bg-tint/40" : "border-line hover:border-ink/50"}`}
+                                >
+                                    <div class="flex flex-col gap-0.5">
+                                        <span class="cap-tag">
+                                            {tienda.tiendaNombre}
+                                        </span>
+                                        <span
+                                            class={`text-[10px] tracking-[0.08em] ${tienda.stock > 0 ? "text-soft" : "text-red-500"}`}
+                                        >
+                                            {tienda.stock > 0
+                                                ? `${tienda.stock} unidades disponibles`
+                                                : "Agotado en esta sucursal"}
+                                        </span>
+                                    </div>
+                                    <span class="text-[13px] font-medium tracking-[0.05em]">
+                                        ${tienda.precio.toFixed(2)}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )
+            }
+
+            <!-- Selector de Talla y Botón Agregar a la Bolsa -->
+            <div class="flex flex-col gap-3">
+                <div class="cap-xs mt-1 text-muted">
+                    TALLAS DISPONIBLES ({producto.talla ?? "ÚNICA"})
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    {
+                        tallas.map((z) => (
+                            <button
+                                type="button"
+                                data-pdp-size={z}
+                                class="cap cursor-pointer border border-line px-4 py-2.5 transition [&.on]:border-ink [&.on]:bg-ink [&.on]:text-white"
+                                style="letter-spacing:.14em"
+                            >
+                                {z}
+                            </button>
+                        ))
+                    }
+                </div>
+                <button
+                    type="button"
+                    data-pdp-add
+                    class="btn-ink is-off mt-2 p-4"
+                >
+                    Selecciona una talla
+                </button>
+                <div class="cap-xs text-muted">
+                    Envío gratis en pedidos mayores a $150 · Devoluciones sin
+                    costo en 30 días
+                </div>
+            </div>
+
+            <!-- Acordeones de información -->
+            <div class="border-t border-line">
+                {
+                    ACCS.map(([t, body], i) => (
+                        <details class="group border-b border-line" open={i === 0}>
+                            <summary
+                                class="cap flex cursor-pointer list-none items-center justify-between py-4"
+                                style="letter-spacing:.18em"
+                            >
+                                <span>{t}</span>
+                                <span class="group-open:hidden">+</span>
+                                <span class="hidden group-open:inline">−</span>
+                            </summary>
+                            <div class="pb-5 text-[12px] leading-loose text-soft">
+                                {body}
+                            </div>
+                        </details>
+                    ))
+                }
+            </div>
+        </div>
+    </article>
+
+    <!-- Productos Relacionados -->
+    <section class="pt-24">
+        <div class="mb-8 flex items-end justify-between">
+            <h2 class="m-0 text-[15px] font-normal tracking-[0.26em]">
+                TAMBIÉN TE PUEDE INTERESAR
+            </h2>
+            <a href="/#catalogo" class="cap link-u" style="letter-spacing:.2em">
+                Ver todo el catálogo
+            </a>
+        </div>
+        <div data-related class="grid grid-cols-2 gap-4 lg:grid-cols-4"></div>
+    </section>
+</main>
+
+<script>
+    import { addToCart, wishlist } from "../../lib/stores";
+    import { cardHTML } from "../../lib/card";
+
+    const $ = <T extends HTMLElement = HTMLElement>(s: string) =>
+        document.querySelector(s) as T | null;
+    const DATA = JSON.parse(
+        document.body.dataset.muse || '{"cats":[],"products":[]}'
+    );
+    const pdpEl = $("[data-pdp]");
+    const handle = pdpEl?.dataset.handle || "";
+    const p = DATA.products.find((x: any) => x.handle === handle);
+
+    let selectedStore =
+        ($("[data-pdp-store-name]")?.textContent || "").trim() ||
+        "Sucursal Central";
+    let size = "";
+
+    document.querySelectorAll<HTMLElement>("[data-pdp-store]").forEach((b) =>
+        b.addEventListener("click", () => {
+            selectedStore = b.dataset.pdpStore!;
+            const nameEl = $("[data-pdp-store-name]");
+            if (nameEl) nameEl.textContent = selectedStore;
+            const priceEl = $("[data-pdp-price-display]");
+            if (priceEl && b.dataset.pdpStorePrice) {
+                priceEl.textContent = "$" + b.dataset.pdpStorePrice;
+            }
+            document
+                .querySelectorAll<HTMLElement>("[data-pdp-store]")
+                .forEach((x) => {
+                    const active = x === b;
+                    x.classList.toggle("border-ink", active);
+                    x.classList.toggle("bg-tint/40", active);
+                    x.classList.toggle("border-line", !active);
+                });
+        })
+    );
+
+    const addBtn = $("[data-pdp-add]") as HTMLButtonElement | null;
+    document.querySelectorAll<HTMLElement>("[data-pdp-size]").forEach((b) =>
+        b.addEventListener("click", () => {
+            size = b.dataset.pdpSize!;
+            document
+                .querySelectorAll<HTMLElement>("[data-pdp-size]")
+                .forEach((x) => x.classList.toggle("on", x === b));
+            if (addBtn) {
+                addBtn.classList.remove("is-off");
+                addBtn.textContent = "Agregar a la bolsa — " + size;
+            }
+        })
+    );
+
+    addBtn?.addEventListener("click", () => {
+        if (!size || !handle) return;
+        addToCart(handle, size, selectedStore);
+        document.querySelector<HTMLElement>("[data-open-cart]")?.click();
+    });
+
+    const relatedEl = $("[data-related]");
+    if (relatedEl && DATA.products) {
+        const rel = DATA.products
+            .filter((r: any) => r.handle !== handle)
+            .slice(0, 4);
+        relatedEl.innerHTML = rel
+            .map((r: any) => cardHTML(r, wishlist.get().includes(r.handle)))
+            .join("");
+    }
+</script>

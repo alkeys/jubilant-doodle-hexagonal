@@ -1,5 +1,10 @@
 ---
+export const prerender = false;
+
+import ListaProducto from "./Productos/ListaProducto.astro";
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="Store" />
+<Layout title="NOBLE MUSE — Tienda de Ropa, Calzado y Accesorios" heroHeader={true}>
+    <ListaProducto />
+</Layout>

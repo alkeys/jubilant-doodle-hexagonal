@@ -1,0 +1,28 @@
+---
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+import Producto from "./Producto.astro";
+import { ProductosApi } from "../../api/services/productos/ProductosApi";
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+
+const { id } = Astro.params;
+const productosApi = new ProductosApi();
+
+let producto: ProductoResponse | null = null;
+try {
+    if (id) {
+        producto = await productosApi.getProductoById(id);
+    }
+} catch (error) {
+    console.error(`Error al obtener el producto ${id} desde la API:`, error);
+}
+
+if (!producto) {
+    return Astro.redirect("/");
+}
+---
+
+<Layout title={producto.nombre} description={producto.descripcion}>
+    <Producto producto={producto} />
+</Layout>

@@ -1,0 +1,882 @@
+---
+import { ProductosApi } from "../../api/services/productos/ProductosApi";
+import { CategoriasApi } from "../../api/services/categorias/CategoriasApi";
+import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
+import { VentasApi } from "../../api/services/ventas/VentasApi";
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+import type { ProductoMasVendidoResponse } from "../../api/types/ventas/ProductoMasVendidoResponse";
+
+const productosApi = new ProductosApi();
+const categoriasApi = new CategoriasApi();
+const tiendasApi = new TiendasApi();
+const ventasApi = new VentasApi();
+
+let productos: ProductoResponse[] = [];
+let categorias: CategoriaResponse[] = [];
+let tiendas: TiendaResponse[] = [];
+let topVendidos: ProductoMasVendidoResponse[] = [];
+
+try {
+    [productos, categorias, tiendas, topVendidos] = await Promise.all([
+        productosApi.getPrincipalesProductos(0, 50),
+        categoriasApi.listCategorias(),
+        tiendasApi.listTiendasActivas(),
+        ventasApi.getProductosMasVendidos(4).catch(() => []),
+    ]);
+} catch (error) {
+    console.error("Error al obtener datos del Home desde la API:", error);
+}
+
+// Mapa rápido de categorías por ID
+const categoriaMap = new Map(categorias.map((c) => [c.id, c.nombre]));
+
+// Tallas únicas extraídas de los productos reales
+const tallasUnicas = Array.from(
+    new Set(
+        productos.flatMap((p) =>
+            (p.talla ?? "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+        )
+    )
+);
+
+// Precio máximo dinámico para el slider de filtro
+const maxPrecioCatalogo = Math.ceil(
+    Math.max(
+        150,
+        ...productos.map((p) => p.precioMax ?? p.precioMin ?? p.precio ?? 0)
+    )
+);
+
+// Slides del Hero con los primeros productos de la API
+const heroProductos = productos.slice(0, 3);
+
+// Tarjetas de categorías con una imagen representativa de algún producto de esa categoría
+const categoriasConImagen = categorias.map((cat) => {
+    const prodCategoria = productos.find((p) => p.categoriaId === cat.id);
+    const img =
+        prodCategoria?.imagenes?.find((im) => im.esPrincipal) ||
+        prodCategoria?.imagenes?.[0];
+    const cantidad = productos.filter((p) => p.categoriaId === cat.id).length;
+    return {
+        ...cat,
+        imagenUrl: img?.url ?? "",
+        cantidad,
+    };
+});
+
+// Cruzar los productos más vendidos con su ficha completa del catálogo
+const topProductosDetalle = topVendidos
+    .map((tv) => {
+        const prod = productos.find((p) => p.id === tv.productoId);
+        return prod ? { ...tv, producto: prod } : null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+---
+
+<!-- ── 1. Hero slider dinámico (alimentado desde ProductosApi) ── -->
+{
+    heroProductos.length > 0 && (
+        <section
+            class="relative -mt-9 h-[calc(100vh-36px)] min-h-[600px] overflow-hidden bg-[#191936]"
+            style="margin-top:0"
+        >
+            {heroProductos.map((prod, i) => {
+                const imgHero =
+                    prod.imagenes?.find((img) => img.esPrincipal) ||
+                    prod.imagenes?.[0];
+                const catNombre =
+                    categoriaMap.get(prod.categoriaId) ?? "COLECCIÓN";
+                return (
+                    <div
+                        data-hero-slide={i}
+                        class={
+                            "absolute inset-0 transition-opacity duration-[900ms] " +
+                            (i === 0
+                                ? "opacity-100"
+                                : "pointer-events-none opacity-0")
+                        }
+                    >
+                        {imgHero && (
+                            <img
+                                src={imgHero.url}
+                                alt={prod.nombre}
+                                class="absolute inset-0 h-full w-full object-cover"
+                            />
+                        )}
+                        <div class="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-ink/30" />
+                        <div class="absolute inset-x-5 bottom-14 flex flex-col items-start gap-5 text-white lg:inset-x-9">
+                            <div class="text-[11px] tracking-[0.28em]">
+                                {catNombre.toUpperCase()} · DESDE $
+                                {(prod.precioMin ?? prod.precio ?? 0).toFixed(
+                                    2
+                                )}
+                            </div>
+                            <div class="max-w-[20ch] text-[clamp(28px,3.4vw,46px)] font-normal leading-[1.15] tracking-[0.2em]">
+                                {prod.nombre.toUpperCase()}
+                            </div>
+                            <p class="max-w-[46ch] text-[13px] text-white/85">
+                                {prod.descripcion}
+                            </p>
+                            <div class="flex flex-wrap items-center gap-6">
+                                <a
+                                    href={`/Productos/${prod.id}`}
+                                    class="cap link-u"
+                                    style="letter-spacing:.22em"
+                                >
+                                    Ver producto
+                                </a>
+                                <a
+                                    href="#catalogo"
+                                    class="cap text-white/80 hover:text-white"
+                                    style="letter-spacing:.22em"
+                                >
+                                    Explorar catálogo
+                                </a>
+                            </div>
+                        </div>
+                        <div class="note absolute right-5 top-[120px] text-white/75 lg:right-9">
+                            {prod.talla ? `tallas: ${prod.talla} · ` : ""}stock:{" "}
+                            {prod.stockTotal ?? prod.stock} u.
+                        </div>
+                    </div>
+                );
+            })}
+            <div class="absolute bottom-6 left-5 z-[3] flex gap-2 lg:left-9">
+                {heroProductos.map((_, i) => (
+                    <button
+                        data-hero-dot={i}
+                        aria-label="Slide"
+                        class={
+                            "h-[2px] w-[34px] cursor-pointer border-none p-0 transition-colors duration-300 " +
+                            (i === 0 ? "bg-white" : "bg-white/40")
+                        }
+                    />
+                ))}
+            </div>
+        </section>
+    )
+}
+
+<!-- ── 2. Mosaico de Categorías desde CategoriasApi ── -->
+{
+    categoriasConImagen.length > 0 && (
+        <section class="mx-auto max-w-[1640px] px-5 pt-20 lg:px-9">
+            <div class="mb-7 flex items-end justify-between">
+                <div>
+                    <div class="cap-xs mb-1.5 text-muted">
+                        EXPLORAR POR CATEGORÍA
+                    </div>
+                    <h2 class="m-0 text-[18px] font-normal tracking-[0.22em]">
+                        COLECCIONES
+                    </h2>
+                </div>
+                <a
+                    href="/#catalogo"
+                    data-filter-categoria=""
+                    class="cap link-u"
+                >
+                    Ver todas ({productos.length})
+                </a>
+            </div>
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {categoriasConImagen.map((cat) => (
+                    <a
+                        href={`/?categoriaId=${cat.id}#catalogo`}
+                        data-filter-categoria={cat.id}
+                        class="group relative block aspect-[3/4] overflow-hidden bg-tint"
+                    >
+                        {cat.imagenUrl && (
+                            <img
+                                src={cat.imagenUrl}
+                                alt={cat.nombre}
+                                loading="lazy"
+                                class="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] group-hover:scale-[1.04]"
+                            />
+                        )}
+                        <span class="absolute inset-0 bg-ink/35 transition-colors duration-300 group-hover:bg-ink/50" />
+                        <span class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
+                            <span
+                                class="cap-tag link-u text-white"
+                                style="letter-spacing:.2em;text-underline-offset:7px"
+                            >
+                                {cat.nombre}
+                            </span>
+                            <span class="text-[11px] text-white/80">
+                                {cat.cantidad}{" "}
+                                {cat.cantidad === 1 ? "pieza" : "piezas"}
+                            </span>
+                        </span>
+                        <span class="note line-clamp-1 absolute bottom-2.5 left-3 right-3 text-white/75">
+                            {cat.descripcion}
+                        </span>
+                    </a>
+                ))}
+            </div>
+        </section>
+    )
+}
+
+<!-- ── 3. Catálogo completo con barra de filtros interactiva (Sucursal, Categoría, Talla, Precio, Orden) ── -->
+<section
+    id="catalogo"
+    class="mx-auto max-w-[1640px] scroll-mt-24 px-5 pt-24 lg:px-9"
+>
+    <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+            <div class="cap-xs mb-2 text-muted" data-catalog-crumb>
+                INICIO / CATÁLOGO COMPLETO
+            </div>
+            <h1
+                class="m-0 text-[26px] font-normal tracking-[0.2em]"
+                data-catalog-title
+            >
+                NUESTROS PRODUCTOS
+            </h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <button
+                type="button"
+                data-f-reset
+                class="cap-xs link-u hidden cursor-pointer text-acc"
+            >
+                Limpiar filtros
+            </button>
+            <div
+                class="text-[11px] tracking-[0.08em] text-soft"
+                data-catalog-count
+            >
+                {productos.length} piezas disponibles
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de filtros estilo Noble Muse -->
+    <div class="mb-10 border-y border-line py-4">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
+                <!-- Filtro por Sucursal -->
+                <div class="flex items-center gap-2">
+                    <span class="cap-xs text-muted">Sucursal:</span>
+                    <select
+                        data-f-tienda
+                        class="cap border border-line bg-white px-3 py-2 text-ink"
+                    >
+                        <option value="">Todas las sucursales</option>
+                        {
+                            tiendas.map((t) => (
+                                <option value={t.id}>{t.nombre}</option>
+                            ))
+                        }
+                    </select>
+                </div>
+
+                <!-- Filtro por Categoría -->
+                <div class="flex items-center gap-2">
+                    <span class="cap-xs text-muted">Categoría:</span>
+                    <select
+                        data-f-categoria
+                        class="cap border border-line bg-white px-3 py-2 text-ink"
+                    >
+                        <option value="">Todas las categorías</option>
+                        {
+                            categorias.map((c) => (
+                                <option value={c.id}>{c.nombre}</option>
+                            ))
+                        }
+                    </select>
+                </div>
+
+                <!-- Filtro por Talla -->
+                <div class="flex items-center gap-2">
+                    <span class="cap-xs text-muted">Talla:</span>
+                    <select
+                        data-f-talla
+                        class="cap border border-line bg-white px-3 py-2 text-ink"
+                    >
+                        <option value="">Todas</option>
+                        {
+                            tallasUnicas.map((talla) => (
+                                <option value={talla}>{talla}</option>
+                            ))
+                        }
+                    </select>
+                </div>
+
+                <!-- Filtro por Precio Máximo -->
+                <div class="flex items-center gap-3">
+                    <span class="cap-xs text-muted">Máx:</span>
+                    <input
+                        data-f-price
+                        type="range"
+                        min="10"
+                        max={maxPrecioCatalogo}
+                        step="5"
+                        value={maxPrecioCatalogo}
+                        class="w-[120px]"
+                    />
+                    <span class="text-[11px] font-medium" data-f-price-label>
+                        ${maxPrecioCatalogo}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Ordenamiento -->
+            <div class="flex items-center gap-2">
+                <span class="cap-xs text-muted">Ordenar:</span>
+                <select
+                    data-f-sort
+                    class="cap border border-line bg-white px-3 py-2 text-ink"
+                >
+                    <option value="recent">Más recientes</option>
+                    <option value="low">Precio: menor a mayor</option>
+                    <option value="high">Precio: mayor a menor</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensaje cuando no hay coincidencias -->
+    <div
+        data-empty-grid
+        class="cap-tag hidden py-20 text-center text-muted"
+    >
+        No hay productos que coincidan con los filtros seleccionados.
+    </div>
+
+    <!-- Grilla de productos -->
+    <div
+        data-products-grid
+        class="grid grid-cols-1 gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4"
+    >
+        {
+            productos.map((producto, index) => {
+                const imagenPrincipal =
+                    producto.imagenes?.find((img) => img.esPrincipal) ||
+                    producto.imagenes?.[0];
+                const imagenSecundaria =
+                    producto.imagenes?.find(
+                        (img) => img.id !== imagenPrincipal?.id
+                    ) || producto.imagenes?.[1];
+                const tieneRango =
+                    producto.precioMin !== undefined &&
+                    producto.precioMax !== undefined &&
+                    producto.precioMin !== producto.precioMax;
+                const tallas = producto.talla
+                    ? producto.talla
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                    : ["ÚNICA"];
+                const tiendasIds = (producto.tiendas ?? [])
+                    .filter((t) => t.activo && t.stock > 0)
+                    .map((t) => t.tiendaId)
+                    .join(",");
+                const precioBase =
+                    producto.precioMin ?? producto.precio ?? 0;
+                const catNombre =
+                    categoriaMap.get(producto.categoriaId) ?? "Catálogo";
+
+                return (
+                    <article
+                        class="group relative flex flex-col"
+                        data-card={producto.id}
+                        data-prod-item
+                        data-index={index}
+                        data-categoria-id={producto.categoriaId}
+                        data-categoria-nombre={catNombre}
+                        data-tiendas-ids={tiendasIds}
+                        data-tallas={tallas.join(",")}
+                        data-precio={precioBase}
+                        data-color="0"
+                    >
+                        <div class="relative aspect-[3/4] w-full overflow-hidden bg-tint">
+                            <a
+                                href={`/Productos/${producto.id}`}
+                                class="absolute inset-0 block"
+                            >
+                                {imagenPrincipal && (
+                                    <img
+                                        src={imagenPrincipal.url}
+                                        alt={producto.nombre}
+                                        loading="lazy"
+                                        class={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 group-hover:scale-[1.04] ${imagenSecundaria ? "group-hover:opacity-0" : ""}`}
+                                    />
+                                )}
+                                {imagenSecundaria && (
+                                    <img
+                                        src={imagenSecundaria.url}
+                                        alt={producto.nombre}
+                                        loading="lazy"
+                                        class="absolute inset-0 h-full w-full object-cover opacity-0 transition-[opacity,transform] duration-700 group-hover:scale-[1.04] group-hover:opacity-100"
+                                    />
+                                )}
+                            </a>
+
+                            <span class="note pointer-events-none absolute bottom-2.5 left-3 text-white/85 mix-blend-difference">
+                                stock total:{" "}
+                                {producto.stockTotal ?? producto.stock} u.
+                            </span>
+
+                            <span
+                                class="cap-xs absolute left-3 top-3 px-2.5 py-1.5 text-white"
+                                style={`background:${tieneRango ? "#6f5bd6" : "#191936"}`}
+                            >
+                                {catNombre.toUpperCase()}
+                            </span>
+
+                            <button
+                                data-card-wish={producto.id}
+                                aria-label="Guardar en favoritos"
+                                class="absolute right-2 top-2 flex h-8 w-8 cursor-pointer items-center justify-center text-[14px] text-ink/45 transition hover:text-acc"
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.4"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                </svg>
+                            </button>
+
+                            <div class="absolute inset-x-0 bottom-0 translate-y-full border-t border-line bg-white/95 px-3.5 py-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                                <div
+                                    class="flex w-full items-center justify-between"
+                                    data-card-bar
+                                >
+                                    <button
+                                        data-card-qv={producto.id}
+                                        class="cap cursor-pointer hover:text-acc"
+                                    >
+                                        Vista rápida
+                                    </button>
+                                    <button
+                                        data-card-open-sizes={producto.id}
+                                        class="cap cursor-pointer hover:text-acc"
+                                    >
+                                        + Agregar
+                                    </button>
+                                </div>
+                                <div
+                                    class="hidden w-full items-center justify-center gap-3"
+                                    data-card-sizes
+                                >
+                                    <span class="cap-xs text-muted">Talla</span>
+                                    {tallas.map((z) => (
+                                        <button
+                                            data-card-size={z}
+                                            data-h={producto.id}
+                                            class="cursor-pointer px-1 py-0.5 text-[11px] tracking-[0.1em] hover:text-acc"
+                                        >
+                                            {z}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-1 flex-col justify-between gap-3 pt-4">
+                            <div>
+                                <a
+                                    href={`/Productos/${producto.id}`}
+                                    class="cap-tag block leading-relaxed hover:underline"
+                                >
+                                    {producto.nombre}
+                                </a>
+                                <p class="line-clamp-2 mt-1 text-[12px] leading-relaxed text-soft">
+                                    {producto.descripcion}
+                                </p>
+                                {producto.talla && (
+                                    <p class="cap-xs mt-1.5 text-muted">
+                                        Tallas: {producto.talla}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div class="flex flex-col gap-2.5 border-t border-linesoft pt-3">
+                                <div class="flex items-baseline justify-between">
+                                    {tieneRango ? (
+                                        <span class="text-[13px] font-medium tracking-[0.04em] text-acc">
+                                            ${producto.precioMin!.toFixed(2)} –
+                                            ${producto.precioMax!.toFixed(2)}
+                                        </span>
+                                    ) : (
+                                        <span class="text-[13px] font-medium tracking-[0.04em] text-ink">
+                                            ${precioBase.toFixed(2)}
+                                        </span>
+                                    )}
+
+                                    <a
+                                        href={`/Productos/${producto.id}`}
+                                        class="cap-xs link-u text-ink hover:text-acc"
+                                    >
+                                        Ver detalle
+                                    </a>
+                                </div>
+
+                                {producto.tiendas &&
+                                    producto.tiendas.length > 0 && (
+                                        <div class="flex flex-col gap-1 bg-tint/45 p-2.5 text-[11px]">
+                                            <span class="cap-xs text-muted">
+                                                Disponibilidad en sucursales:
+                                            </span>
+                                            {producto.tiendas.map((tienda) => (
+                                                <div class="flex items-center justify-between text-soft">
+                                                    <span class="truncate pr-2">
+                                                        {tienda.tiendaNombre}
+                                                    </span>
+                                                    <span
+                                                        class={
+                                                            tienda.stock > 0
+                                                                ? "font-medium text-ink"
+                                                                : "text-red-500"
+                                                        }
+                                                    >
+                                                        $
+                                                        {tienda.precio.toFixed(
+                                                            2
+                                                        )}{" "}
+                                                        ·{" "}
+                                                        {tienda.stock > 0
+                                                            ? `${tienda.stock} disp.`
+                                                            : "Agotado"}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                            </div>
+                        </div>
+                    </article>
+                );
+            })
+        }
+    </div>
+</section>
+
+<!-- ── 4. Ranking de Más Vendidos (desde VentasApi.getProductosMasVendidos) ── -->
+{
+    topProductosDetalle.length > 0 && (
+        <section
+            id="top-ventas"
+            class="mx-auto max-w-[1640px] scroll-mt-24 px-5 pt-24 lg:px-9"
+        >
+            <div class="mb-8 flex items-end justify-between border-b border-line pb-5">
+                <div>
+                    <div class="cap-xs mb-1.5 text-muted">
+                        FAVORITOS DE NUESTROS CLIENTES
+                    </div>
+                    <h2 class="m-0 text-[20px] font-normal tracking-[0.22em]">
+                        MÁS VENDIDOS
+                    </h2>
+                </div>
+                <span class="cap-xs text-muted">TOP VENTAS EN SUCURSALES</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {topProductosDetalle.map(({ producto, totalCantidadVendida }, idx) => {
+                    const img =
+                        producto.imagenes?.find((im) => im.esPrincipal) ||
+                        producto.imagenes?.[0];
+                    return (
+                        <a
+                            href={`/Productos/${producto.id}`}
+                            class="group flex items-center gap-4 border border-line p-4 transition hover:border-ink"
+                        >
+                            {img && (
+                                <img
+                                    src={img.url}
+                                    alt={producto.nombre}
+                                    loading="lazy"
+                                    class="h-24 w-20 flex-none object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                />
+                            )}
+                            <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                                <span class="cap-xs text-acc">
+                                    #{idx + 1} MÁS VENDIDO · {totalCantidadVendida}{" "}
+                                    u. vendidas
+                                </span>
+                                <span class="cap-tag truncate group-hover:underline">
+                                    {producto.nombre}
+                                </span>
+                                <span class="text-[12px] text-ink">
+                                    $
+                                    {(
+                                        producto.precioMin ??
+                                        producto.precio ??
+                                        0
+                                    ).toFixed(2)}
+                                </span>
+                            </div>
+                        </a>
+                    );
+                })}
+            </div>
+        </section>
+    )
+}
+
+<!-- ── 5. Directorio de Sucursales (desde TiendasApi.listTiendasActivas) ── -->
+{
+    tiendas.length > 0 && (
+        <section
+            id="sucursales"
+            class="mx-auto max-w-[1640px] scroll-mt-24 px-5 pt-24 lg:px-9"
+        >
+            <div class="mb-8 flex flex-col justify-between gap-3 border-b border-line pb-5 sm:flex-row sm:items-end">
+                <div>
+                    <div class="cap-xs mb-1.5 text-muted">
+                        PUNTOS DE VENTA FÍSICOS
+                    </div>
+                    <h2 class="m-0 text-[20px] font-normal tracking-[0.22em]">
+                        NUESTRAS SUCURSALES
+                    </h2>
+                </div>
+                <a
+                    href="/#catalogo"
+                    data-filter-tienda=""
+                    class="cap link-u"
+                >
+                    Ver inventario de todas las sucursales
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {tiendas.map((tienda) => {
+                    const piezasEnSucursal = productos.filter((p) =>
+                        p.tiendas?.some(
+                            (inv) =>
+                                inv.tiendaId === tienda.id &&
+                                inv.activo &&
+                                inv.stock > 0
+                        )
+                    ).length;
+
+                    return (
+                        <div class="flex flex-col justify-between gap-6 border border-line bg-tint/25 p-7 transition hover:border-ink">
+                            <div class="flex flex-col gap-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="cap-xs text-acc">
+                                        SUCURSAL ACTIVA
+                                    </span>
+                                    <span class="cap-xs text-muted">
+                                        {piezasEnSucursal} productos en stock
+                                    </span>
+                                </div>
+                                <h3 class="m-0 text-[18px] font-normal tracking-[0.14em]">
+                                    {tienda.nombre.toUpperCase()}
+                                </h3>
+                                <p class="m-0 text-[12.5px] leading-relaxed text-soft">
+                                    {tienda.descripcion}
+                                </p>
+                                {tienda.direccion && (
+                                    <div class="mt-1 flex items-center gap-2 text-[11.5px] text-ink">
+                                        <span>📍</span>
+                                        <span>{tienda.direccion}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <a
+                                href={`/?tiendaId=${tienda.id}#catalogo`}
+                                data-filter-tienda={tienda.id}
+                                class="btn-ink p-3.5 text-center"
+                            >
+                                Ver productos en {tienda.nombre}
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    )
+}
+
+<script>
+    const $ = <T extends HTMLElement = HTMLElement>(s: string) =>
+        document.querySelector(s) as T | null;
+    const $$ = <T extends HTMLElement = HTMLElement>(s: string) =>
+        [...document.querySelectorAll(s)] as T[];
+
+    // ── 1. Hero Slider ────────────────────────────────────────────
+    const slides = $$("[data-hero-slide]");
+    if (slides.length > 1) {
+        let hero = 0;
+        function showHero(i: number) {
+            hero = i;
+            slides.forEach((el) => {
+                const on = Number(el.dataset.heroSlide) === i;
+                el.classList.toggle("opacity-100", on);
+                el.classList.toggle("opacity-0", !on);
+                el.classList.toggle("pointer-events-none", !on);
+            });
+            $$("[data-hero-dot]").forEach((d) => {
+                const on = Number(d.dataset.heroDot) === i;
+                d.classList.toggle("bg-white", on);
+                d.classList.toggle("bg-white/40", !on);
+            });
+        }
+        let heroTimer = setInterval(
+            () => showHero((hero + 1) % slides.length),
+            6500
+        );
+        $$("[data-hero-dot]").forEach((d) =>
+            d.addEventListener("click", () => {
+                clearInterval(heroTimer);
+                showHero(Number(d.dataset.heroDot));
+                heroTimer = setInterval(
+                    () => showHero((hero + 1) % slides.length),
+                    6500
+                );
+            })
+        );
+    }
+
+    // ── 2. Filtrado y Ordenamiento en Vivo del Catálogo ───────────
+    const selTienda = $("[data-f-tienda]") as HTMLSelectElement | null;
+    const selCategoria = $("[data-f-categoria]") as HTMLSelectElement | null;
+    const selTalla = $("[data-f-talla]") as HTMLSelectElement | null;
+    const rngPrecio = $("[data-f-price]") as HTMLInputElement | null;
+    const lblPrecio = $("[data-f-price-label]");
+    const selSort = $("[data-f-sort]") as HTMLSelectElement | null;
+    const btnReset = $("[data-f-reset]");
+    const grid = $("[data-products-grid]");
+    const emptyMsg = $("[data-empty-grid]");
+    const countEl = $("[data-catalog-count]");
+    const titleEl = $("[data-catalog-title]");
+    const crumbEl = $("[data-catalog-crumb]");
+    const cards = $$("[data-prod-item]");
+
+    const maxPriceDefault = rngPrecio ? Number(rngPrecio.max) : 500;
+
+    function applyFilters() {
+        const tiendaId = selTienda?.value || "";
+        const categoriaId = selCategoria?.value || "";
+        const talla = selTalla?.value || "";
+        const maxPrice = rngPrecio ? Number(rngPrecio.value) : maxPriceDefault;
+        const sort = selSort?.value || "recent";
+
+        if (lblPrecio) lblPrecio.textContent = "$" + maxPrice;
+
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+            const cCat = card.dataset.categoriaId || "";
+            const cTiendas = (card.dataset.tiendasIds || "").split(",");
+            const cTallas = (card.dataset.tallas || "").split(",");
+            const cPrecio = Number(card.dataset.precio || 0);
+
+            const matchTienda = !tiendaId || cTiendas.includes(tiendaId);
+            const matchCat = !categoriaId || cCat === categoriaId;
+            const matchTalla = !talla || cTallas.includes(talla);
+            const matchPrecio = cPrecio <= maxPrice;
+
+            const show = matchTienda && matchCat && matchTalla && matchPrecio;
+            card.classList.toggle("hidden", !show);
+            if (show) visibleCount++;
+        });
+
+        // Ordenar tarjetas en el DOM
+        if (grid) {
+            const sorted = [...cards].sort((a, b) => {
+                const pa = Number(a.dataset.precio || 0);
+                const pb = Number(b.dataset.precio || 0);
+                const ia = Number(a.dataset.index || 0);
+                const ib = Number(b.dataset.index || 0);
+                if (sort === "low") return pa - pb;
+                if (sort === "high") return pb - pa;
+                return ia - ib;
+            });
+            sorted.forEach((c) => grid.appendChild(c));
+        }
+
+        // Actualizar encabezados según filtro activo
+        const tiendaText =
+            selTienda && selTienda.selectedIndex > 0
+                ? selTienda.options[selTienda.selectedIndex].text
+                : "";
+        const catText =
+            selCategoria && selCategoria.selectedIndex > 0
+                ? selCategoria.options[selCategoria.selectedIndex].text
+                : "";
+
+        if (titleEl && crumbEl) {
+            if (tiendaText && catText) {
+                titleEl.textContent = `${catText.toUpperCase()} — ${tiendaText.toUpperCase()}`;
+                crumbEl.textContent = `INICIO / ${tiendaText.toUpperCase()} / ${catText.toUpperCase()}`;
+            } else if (tiendaText) {
+                titleEl.textContent = tiendaText.toUpperCase();
+                crumbEl.textContent = `INICIO / SUCURSAL / ${tiendaText.toUpperCase()}`;
+            } else if (catText) {
+                titleEl.textContent = catText.toUpperCase();
+                crumbEl.textContent = `INICIO / CATEGORÍA / ${catText.toUpperCase()}`;
+            } else {
+                titleEl.textContent = "NUESTROS PRODUCTOS";
+                crumbEl.textContent = "INICIO / CATÁLOGO COMPLETO";
+            }
+        }
+
+        const hasActiveFilter =
+            Boolean(tiendaId) ||
+            Boolean(categoriaId) ||
+            Boolean(talla) ||
+            maxPrice < maxPriceDefault;
+
+        btnReset?.classList.toggle("hidden", !hasActiveFilter);
+        emptyMsg?.classList.toggle("hidden", visibleCount > 0);
+        if (countEl) {
+            countEl.textContent = `${visibleCount} ${visibleCount === 1 ? "pieza disponible" : "piezas disponibles"}`;
+        }
+    }
+
+    // Leer parámetros iniciales de la URL (?tiendaId=...&categoriaId=...)
+    const params = new URLSearchParams(location.search);
+    if (params.get("tiendaId") && selTienda) {
+        selTienda.value = params.get("tiendaId")!;
+    }
+    if (params.get("categoriaId") && selCategoria) {
+        selCategoria.value = params.get("categoriaId")!;
+    }
+
+    selTienda?.addEventListener("change", applyFilters);
+    selCategoria?.addEventListener("change", applyFilters);
+    selTalla?.addEventListener("change", applyFilters);
+    rngPrecio?.addEventListener("input", applyFilters);
+    selSort?.addEventListener("change", applyFilters);
+
+    btnReset?.addEventListener("click", () => {
+        if (selTienda) selTienda.value = "";
+        if (selCategoria) selCategoria.value = "";
+        if (selTalla) selTalla.value = "";
+        if (rngPrecio) rngPrecio.value = String(maxPriceDefault);
+        if (selSort) selSort.value = "recent";
+        history.replaceState(null, "", "/#catalogo");
+        applyFilters();
+    });
+
+    // Escuchar eventos desde el Mega Menú, Mosaico de Categorías, Footer o Tarjetas de Sucursales
+    document.addEventListener("njx:filter", ((e: CustomEvent) => {
+        const { tiendaId, categoriaId } = e.detail || {};
+        if (tiendaId !== undefined && selTienda) {
+            selTienda.value = tiendaId;
+            if (categoriaId === undefined && selCategoria)
+                selCategoria.value = "";
+        }
+        if (categoriaId !== undefined && selCategoria) {
+            selCategoria.value = categoriaId;
+            if (tiendaId === undefined && selTienda) selTienda.value = "";
+        }
+        applyFilters();
+    }) as EventListener);
+
+    applyFilters();
+</script>

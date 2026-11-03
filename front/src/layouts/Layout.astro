@@ -1,43 +1,1121 @@
 ---
-interface Props {
-	title: string;
-}
-const { title } = Astro.props;
-
 import "../styles/global.css";
-import HeroSection from "../components/header/Header.astro";
+import { ProductosApi } from "../api/services/productos/ProductosApi";
+import { CategoriasApi } from "../api/services/categorias/CategoriasApi";
+import { TiendasApi } from "../api/services/tiendas/TiendasApi";
+import type { ProductoResponse } from "../api/types/productos/ProductoResponse";
+import type { CategoriaResponse } from "../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../api/types/tiendas/TiendaResponse";
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  /** true on the home page: header starts transparent over the hero */
+  heroHeader?: boolean;
+}
+
+const {
+  title = "NOBLE MUSE — Tienda de Ropa, Calzado y Accesorios",
+  description = "Catálogo multitienda de moda urbana, calzado, sneakers y accesorios.",
+  ogImage,
+  heroHeader = false,
+} = Astro.props;
+
+const productosApi = new ProductosApi();
+const categoriasApi = new CategoriasApi();
+const tiendasApi = new TiendasApi();
+
+let rawProductos: ProductoResponse[] = [];
+let rawCategorias: CategoriaResponse[] = [];
+let rawTiendas: TiendaResponse[] = [];
+
+try {
+  [rawProductos, rawCategorias, rawTiendas] = await Promise.all([
+    productosApi.getPrincipalesProductos(0, 50),
+    categoriasApi.listCategorias(),
+    tiendasApi.listTiendasActivas(),
+  ]);
+} catch (error) {
+  console.error("Error al obtener datos en Layout:", error);
+}
+
+const CATS = rawTiendas.length > 0
+  ? rawTiendas.map((t) => t.nombre)
+  : Array.from(new Set(rawProductos.flatMap((p) => (p.tiendas ?? []).map((t) => t.tiendaNombre))));
+
+const mappedProducts = rawProductos.map((p) => {
+  const imgPrincipal = p.imagenes?.find((im) => im.esPrincipal) ?? p.imagenes?.[0];
+  const imgSecundaria = p.imagenes?.find((im) => im.id !== imgPrincipal?.id) ?? p.imagenes?.[1];
+  const hasRange = p.precioMin !== undefined && p.precioMax !== undefined && p.precioMin !== p.precioMax;
+
+  const tallas = p.talla
+    ? p.talla.split(",").map((s) => s.trim()).filter(Boolean)
+    : ["ÚNICA"];
+
+  return {
+    id: p.id,
+    handle: p.id,
+    name: p.nombre,
+    description: p.descripcion,
+    talla: p.talla ?? "ÚNICA",
+    price: p.precioMin ?? p.precio ?? 0,
+    precioMin: p.precioMin ?? p.precio ?? 0,
+    precioMax: p.precioMax ?? p.precio ?? 0,
+    oldPrice: hasRange ? p.precioMax : null,
+    image: imgPrincipal?.url ?? "",
+    image2: imgSecundaria?.url ?? "",
+    cat: p.tiendas?.[0]?.tiendaNombre ?? "Colección General",
+    tiendas: p.tiendas ?? [],
+    tiendasCount: p.tiendas?.length ?? 1,
+    stockTotal: p.stockTotal ?? p.stock ?? 0,
+    badge: hasRange ? "MULTITIENDA" : "EN STOCK",
+    colors: [],
+    sizes: tallas,
+  };
+});
+
+const megaFeatured = mappedProducts[0];
+
+const clientData = JSON.stringify({
+  cats: CATS,
+  products: mappedProducts,
+});
 ---
 
 <!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-		<script is:inline>
-			const theme = localStorage.getItem("colorTheme");
-			if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-				document.documentElement.classList.add("dark");
-			} else {
-				document.documentElement.classList.remove("dark");
-			}
-		</script>
-	</head>
-	<body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
-		<HeroSection />
-		<slot />
-	</body>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body
+    class="min-h-screen overflow-x-hidden bg-base font-sans font-light text-ink"
+    data-muse={clientData}
+    data-hero-header={heroHeader ? "1" : ""}
+  >
+    <!-- ── Announcement ── -->
+    <div class="flex h-9 items-center justify-center bg-ink text-white">
+      <a href="/#catalogo" class="cap link-u" style="letter-spacing:.18em">
+        Nueva Colección — Ropa, Calzado &amp; Sneakers Multitienda
+      </a>
+    </div>
 
+    <!-- ── Masthead (fixed; transparent over the hero, solid on scroll) ── -->
+    <header
+      data-header
+      class="fixed inset-x-0 top-0 z-[100] border-b border-transparent text-white transition-[background,color,border-color,transform] duration-[400ms]"
+      style={heroHeader ? "transform:translateY(36px)" : ""}
+    >
+      <div
+        class="mx-auto flex h-[60px] max-w-[1640px] items-center justify-between px-4 sm:grid sm:h-[86px] sm:grid-cols-[1fr_auto_1fr] sm:px-5 lg:px-9"
+      >
+        <nav
+          class="cap hidden items-center gap-4 whitespace-nowrap sm:flex lg:gap-7"
+        >
+          <a href="/" data-mega-off class="hidden sm:inline">Inicio</a>
+          <a href="/#catalogo" data-mega-on class="hidden sm:inline">Catálogo</a>
+          <a href="/#sucursales" data-mega-off class="hidden sm:inline">Sucursales</a>
+          <a href="/#looks" data-mega-off class="hidden md:inline">Editorial</a>
+        </nav>
 
-	<style>
-		html,
-		body {
-			margin: 0;
-			width: 100%;
-			height: 100%;
-		}
-	</style>
+        <a href="/" data-mega-off class="flex flex-col items-center gap-1.5">
+          <span
+            class="whitespace-nowrap text-[clamp(15px,1.5vw,24px)] font-normal leading-none tracking-[0.42em]"
+            style="text-indent:.42em"
+          >
+            NOBLE MUSE AVILES
+          </span>
+          <span
+            class="whitespace-nowrap text-[7px] leading-none tracking-[0.44em] opacity-70"
+            style="text-indent:.44em"
+          >
+            ROPA · CALZADO · ACCESORIOS
+          </span>
+        </a>
+
+        <div
+          class="order-first flex items-center justify-end gap-4 whitespace-nowrap sm:order-none lg:gap-6"
+          data-mega-off
+        >
+          <button
+            data-search-toggle
+            aria-label="Buscar"
+            class="flex cursor-pointer items-center"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 17 17"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.1"
+            >
+              <circle cx="7.2" cy="7.2" r="5.4"></circle>
+              <line x1="11.2" y1="11.2" x2="16" y2="16"></line>
+            </svg>
+          </button>
+          <button
+            data-open-wish
+            aria-label="Wishlist"
+            class="flex cursor-pointer items-center gap-1.5 text-[10px] tracking-[0.12em]"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              ></path>
+            </svg>
+            <span data-wish-count>0</span>
+          </button>
+          <button
+            data-open-cart
+            aria-label="Bolsa"
+            class="flex cursor-pointer items-center gap-1.5 text-[10px] tracking-[0.12em]"
+          >
+            <svg
+              width="15"
+              height="17"
+              viewBox="0 0 15 17"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.1"
+            >
+              <rect x="1" y="5" width="13" height="11"></rect>
+              <path d="M4.6 5.2V3.6a2.9 2.9 0 0 1 5.8 0v1.6"></path>
+            </svg>
+            <span data-cart-count>0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- mobile nav row -->
+      <nav
+        class="cap no-scrollbar flex items-center gap-6 overflow-x-auto whitespace-nowrap px-5 pb-3 sm:hidden"
+        style="border-top:1px solid color-mix(in srgb, currentColor 18%, transparent);padding-top:10px"
+      >
+        <a href="/">Inicio</a>
+        <a href="/#catalogo" data-mega-m>Catálogo</a>
+        <a href="/#sucursales">Sucursales</a>
+        <a href="/#looks">Editorial</a>
+      </nav>
+
+      <!-- mega menu -->
+      <div
+        data-mega
+        class="pointer-events-none absolute inset-x-0 top-full -translate-y-2.5 border-b border-line bg-white text-ink opacity-0 transition-all duration-[350ms] max-h-[calc(100vh-100px)] overflow-y-auto overscroll-contain"
+      >
+        <div
+          class="mx-auto grid max-w-[1640px] gap-10 px-5 py-12 md:grid-cols-[1fr_1fr_1.2fr] lg:gap-16 lg:px-9"
+        >
+          <div>
+            <div class="cap-xs mb-6 text-muted">Sucursales Disponibles</div>
+            <div class="flex flex-col gap-3 text-[12px] tracking-[0.05em]">
+              <a
+                href="/#catalogo"
+                data-filter-tienda=""
+                class="hover:text-acc transition"
+              >
+                Todas las sucursales
+              </a>
+              {
+                rawTiendas.map((tienda) => (
+                  <a
+                    href={`/?tiendaId=${tienda.id}#catalogo`}
+                    data-filter-tienda={tienda.id}
+                    class="hover:text-acc transition"
+                  >
+                    {tienda.nombre}
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+          <div>
+            <div class="cap-xs mb-6 text-muted">Categorías</div>
+            <div class="flex flex-col gap-3 text-[12px] tracking-[0.05em]">
+              <a
+                href="/#catalogo"
+                data-filter-categoria=""
+                class="hover:text-acc transition"
+              >
+                Todas las categorías
+              </a>
+              {
+                rawCategorias.map((cat) => (
+                  <a
+                    href={`/?categoriaId=${cat.id}#catalogo`}
+                    data-filter-categoria={cat.id}
+                    class="hover:text-acc transition"
+                  >
+                    {cat.nombre}
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+          {megaFeatured && (
+            <div
+              class="hidden flex-col items-start justify-end gap-4 border-l border-line pl-10 md:flex lg:pl-16"
+            >
+              <a href={`/Productos/${megaFeatured.id}`} class="relative block w-full overflow-hidden">
+                {megaFeatured.image && (
+                  <img
+                    src={megaFeatured.image}
+                    alt={megaFeatured.name}
+                    loading="lazy"
+                    class="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+                  />
+                )}
+                <span class="note absolute left-3 top-2.5 text-white/85">
+                  destacado · ${megaFeatured.price.toFixed(2)}
+                </span>
+              </a>
+              <div class="text-[22px] leading-snug tracking-[0.14em]">
+                {megaFeatured.name.toUpperCase()}
+              </div>
+              <div class="max-w-[34ch] text-[12px] leading-loose text-soft">
+                {megaFeatured.description}
+              </div>
+              <a
+                href={`/Productos/${megaFeatured.id}`}
+                class="cap link-u"
+                style="letter-spacing:.2em"
+              >
+                Ver detalle
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- search -->
+      <div
+        data-search
+        class="pointer-events-none absolute inset-x-0 top-full -translate-y-2.5 border-b border-line bg-white text-ink opacity-0 transition-all duration-[350ms]"
+      >
+        <div class="mx-auto max-w-[1640px] px-5 py-10 lg:px-9">
+          <div class="flex items-center gap-4 border-b border-ink pb-3.5">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 17 17"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.1"
+            >
+              <circle cx="7.2" cy="7.2" r="5.4"></circle>
+              <line x1="11.2" y1="11.2" x2="16" y2="16"></line>
+            </svg>
+            <input
+              data-search-input
+              placeholder="Buscar ropa, sneakers, botas, accesorios..."
+              class="flex-1 bg-transparent p-0 text-[20px] tracking-[0.06em] outline-none placeholder:text-muted"
+            />
+            <button
+              data-search-close
+              class="cap cursor-pointer"
+              style="letter-spacing:.18em"
+            >
+              Cerrar
+            </button>
+          </div>
+          <div
+            data-search-results
+            class="mt-6 hidden flex-col [&.show]:flex"
+          ></div>
+          <div
+            class="no-scrollbar mt-7 flex items-center gap-4 overflow-x-auto sm:flex-wrap sm:overflow-visible"
+          >
+            <span class="cap-xs flex-none text-muted">Búsquedas rápidas</span>
+            {
+              ["Sneakers", "Jeans", "Chamarra", "Sudadera", "Botas", "Mochila"].map(
+                (q) => (
+                  <button
+                    data-pop-search={q}
+                    class="cap-tag flex-none cursor-pointer whitespace-nowrap border border-line px-3.5 py-2"
+                  >
+                    {q}
+                  </button>
+                )
+              )
+            }
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <slot />
+
+    <!-- ── Footer ── -->
+    <footer class="mt-14 border-t border-line sm:mt-24 lg:mt-32">
+      <div
+        class="mx-auto grid max-w-[1640px] grid-cols-2 gap-7 px-4 pt-10 sm:gap-10 sm:px-5 sm:pt-20 lg:grid-cols-4 lg:gap-12 lg:px-9"
+      >
+        <div class="flex flex-col gap-4">
+          <div class="cap-xs text-muted">Categorías</div>
+          {
+            rawCategorias.map((cat) => (
+              <a
+                href={`/?categoriaId=${cat.id}#catalogo`}
+                data-filter-categoria={cat.id}
+                class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+              >
+                {cat.nombre}
+              </a>
+            ))
+          }
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="cap-xs text-muted">Sucursales</div>
+          {
+            rawTiendas.map((tienda) => (
+              <a
+                href={`/?tiendaId=${tienda.id}#catalogo`}
+                data-filter-tienda={tienda.id}
+                class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+              >
+                {tienda.nombre}
+              </a>
+            ))
+          }
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="cap-xs text-muted">Servicio</div>
+          {
+            [
+              "Envíos y entregas",
+              "Guía de tallas",
+              "Cambios y devoluciones",
+              "Contacto",
+            ].map((l) => (
+              <a
+                href="/#catalogo"
+                class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+              >
+                {l}
+              </a>
+            ))
+          }
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="cap-xs text-muted">Accesos</div>
+          <a
+            href="/#top-ventas"
+            class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            Más vendidos
+          </a>
+          <a
+            href="/#sucursales"
+            class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            Directorio de tiendas
+          </a>
+          <button
+            type="button"
+            data-open-wish
+            class="cursor-pointer text-left text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            Favoritos
+          </button>
+          <button
+            type="button"
+            data-open-cart
+            class="cursor-pointer text-left text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            Bolsa de compra
+          </button>
+        </div>
+      </div>
+      <div class="mx-auto max-w-[1640px] px-5 pt-16 lg:px-9">
+        <div
+          class="overflow-hidden whitespace-nowrap text-center leading-[0.9] tracking-[0.06em] text-transparent"
+          style="font-size:clamp(56px,12.4vw,210px);-webkit-text-stroke:1px #d8d5cd"
+        >
+          NOBLE MUSE
+        </div>
+      </div>
+      <div
+        class="mx-auto flex max-w-[1640px] flex-wrap justify-between gap-4 px-5 pb-10 pt-6 text-[10px] tracking-[0.1em] text-muted lg:px-9"
+      >
+        <span>
+          © <span data-year></span> Noble Muse — Catálogo Multitienda conectado a
+          API Hexagonal
+        </span>
+        <span class="flex flex-wrap gap-5">
+          <a href="/#catalogo">Catálogo</a>
+          <a href="/#sucursales">Sucursales</a>
+        </span>
+      </div>
+    </footer>
+
+    <!-- ── Thank-you popup ── -->
+    <div
+      data-thanks-root
+      class="fixed inset-0 z-[170] hidden items-center justify-center bg-ink/40 p-3 sm:p-6 [&.on]:flex"
+    >
+      <div
+        class="flex w-[min(430px,100%)] flex-col gap-5 border border-line bg-white p-5 sm:p-8"
+      >
+        <div class="flex items-baseline justify-between gap-4">
+          <span class="cap-xs text-muted">Pedido confirmado</span>
+          <button
+            data-thanks-close
+            class="cap cursor-pointer"
+            style="letter-spacing:.18em"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div class="text-[20px] font-normal tracking-[0.18em]">
+          GRACIAS POR TU COMPRA
+        </div>
+        <p class="m-0 text-[12.5px] leading-[1.8] tracking-[0.04em] text-soft">
+          Tu selección ha sido procesada en nuestra tienda demostrativa.
+        </p>
+        <a href="/" class="btn-ink p-4 text-center">SEGUIR COMPRANDO</a>
+      </div>
+    </div>
+
+    <!-- ── Drawer overlay ── -->
+    <div
+      data-overlay
+      class="pointer-events-none fixed inset-0 z-[150] bg-ink/30 opacity-0 transition-opacity duration-[400ms] [&.on]:pointer-events-auto [&.on]:opacity-100"
+    ></div>
+
+    <!-- ── Cart drawer ── -->
+    <aside
+      data-cart-drawer
+      class="fixed bottom-0 right-0 top-0 z-[160] flex w-[min(440px,92vw)] translate-x-[102%] flex-col border-l border-line bg-white transition-transform duration-[450ms] [&.on]:translate-x-0"
+    >
+      <div
+        class="flex items-center justify-between border-b border-line px-7 pb-5 pt-7"
+      >
+        <span class="tracking-[0.24em] text-[11px]">
+          BOLSA DE COMPRA (<span data-cart-count>0</span>)
+        </span>
+        <button
+          data-drawer-close
+          class="cap cursor-pointer"
+          style="letter-spacing:.18em"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div class="flex flex-col gap-3 border-b border-line px-7 py-5">
+        <div data-ship-msg class="text-[10px] tracking-[0.1em] text-soft"></div>
+        <div class="h-[2px] bg-linesoft">
+          <div
+            data-ship-bar
+            class="h-[2px] bg-acc transition-[width] duration-500"
+            style="width:0%"
+          ></div>
+        </div>
+      </div>
+      <div data-cart-lines class="flex-1 overflow-auto px-7 py-2"></div>
+      <div
+        class="flex flex-col gap-4 border-t border-line px-7 pb-8 pt-6"
+      >
+        <div class="flex justify-between text-[12px] tracking-[0.1em]">
+          <span>SUBTOTAL</span>
+          <span data-cart-subtotal>$0.00</span>
+        </div>
+        <button data-checkout class="btn-ink p-4">Finalizar compra</button>
+      </div>
+    </aside>
+
+    <!-- ── Wishlist drawer ── -->
+    <aside
+      data-wish-drawer
+      class="fixed bottom-0 right-0 top-0 z-[160] flex w-[min(440px,92vw)] translate-x-[102%] flex-col border-l border-line bg-white transition-transform duration-[450ms] [&.on]:translate-x-0"
+    >
+      <div
+        class="flex items-center justify-between border-b border-line px-7 pb-5 pt-7"
+      >
+        <span class="tracking-[0.24em] text-[11px]">
+          FAVORITOS (<span data-wish-count>0</span>)
+        </span>
+        <button
+          data-drawer-close
+          class="cap cursor-pointer"
+          style="letter-spacing:.18em"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div data-wish-lines class="flex-1 overflow-auto px-7 py-2"></div>
+    </aside>
+
+    <!-- ── Quick view ── -->
+    <div
+      data-qv-root
+      class="fixed inset-0 z-[200] hidden items-center justify-center p-5 lg:p-10 [&.on]:flex"
+    >
+      <div data-qv-dim class="absolute inset-0 bg-ink/30"></div>
+      <div
+        data-qv-panel
+        class="anim-pop relative grid max-h-[88vh] w-[min(1100px,100%)] overflow-auto bg-white md:grid-cols-2"
+      ></div>
+    </div>
+
+    <!-- ── Toast ── -->
+    <div
+      data-toast
+      class="pointer-events-none fixed bottom-6 left-1/2 z-[320] -translate-x-1/2 opacity-0 transition-all duration-300"
+    >
+      <p
+        class="cap-tag border border-line bg-white px-4 py-2.5"
+        data-toast-text
+      ></p>
+    </div>
+
+    <script>
+      import {
+        cart,
+        addToCart,
+        setCartQty,
+        wishlist,
+        toggleWishlist,
+      } from "../lib/stores";
+      import { esc, fmt, cardHTML } from "../lib/card";
+
+      const DATA = JSON.parse(document.body.dataset.muse || '{"cats":[],"products":[]}');
+      const PRODUCTS: any[] = DATA.products || [];
+      const byHandle = new Map(PRODUCTS.map((p) => [p.handle, p]));
+      const $ = <T extends HTMLElement = HTMLElement>(
+        s: string,
+        r: ParentNode = document
+      ) => r.querySelector(s) as T | null;
+      const $$ = <T extends HTMLElement = HTMLElement>(
+        s: string,
+        r: ParentNode = document
+      ) => [...r.querySelectorAll(s)] as T[];
+      const FREE_SHIP = 150;
+      (window as any).njxMuse = {
+        PRODUCTS,
+        cardHTML,
+        wished: (h: string) => wishlist.get().includes(h),
+      };
+
+      // ── toast ─────────────────────────────────────────────────
+      let toastT: ReturnType<typeof setTimeout>;
+      function toast(msg: string) {
+        const t = $("[data-toast]");
+        const text = $("[data-toast-text]");
+        if (!t || !text) return;
+        text.textContent = msg;
+        t.style.opacity = "1";
+        clearTimeout(toastT);
+        toastT = setTimeout(() => {
+          t.style.opacity = "0";
+        }, 2200);
+      }
+
+      // ── header: transparent over hero, solid otherwise ────────
+      const header = $("[data-header]")!;
+      const heroMode = document.body.dataset.heroHeader === "1";
+      let hover = false,
+        megaOpen = false,
+        searchOpen = false,
+        scrolled = !heroMode;
+      function paintHeader() {
+        const solid = scrolled || hover || megaOpen || searchOpen || !heroMode;
+        header.classList.toggle("bg-white", solid);
+        header.classList.toggle("text-ink", solid);
+        header.classList.toggle("text-white", !solid);
+        header.classList.toggle("border-line", solid);
+        header.classList.toggle("border-transparent", !solid);
+        header.style.transform =
+          scrolled || !heroMode ? "translateY(0)" : "translateY(36px)";
+      }
+      if (heroMode) {
+        addEventListener(
+          "scroll",
+          () => {
+            const s = scrollY > innerHeight * 0.72;
+            if (s !== scrolled) {
+              scrolled = s;
+              paintHeader();
+            }
+          },
+          { passive: true }
+        );
+      }
+      header.addEventListener("mouseenter", () => {
+        hover = true;
+        paintHeader();
+      });
+      header.addEventListener("mouseleave", () => {
+        hover = false;
+        megaOpen = false;
+        paintMega();
+        paintHeader();
+      });
+
+      // ── mega ──────────────────────────────────────────────────
+      const mega = $("[data-mega]")!;
+      function paintMega() {
+        mega.classList.toggle("opacity-100", megaOpen);
+        mega.classList.toggle("opacity-0", !megaOpen);
+        mega.classList.toggle("translate-y-0", megaOpen);
+        mega.classList.toggle("-translate-y-2.5", !megaOpen);
+        mega.classList.toggle("pointer-events-auto", megaOpen);
+        mega.classList.toggle("pointer-events-none", !megaOpen);
+      }
+      $("[data-mega-on]")?.addEventListener("mouseenter", () => {
+        megaOpen = true;
+        searchOpen = false;
+        paintMega();
+        paintSearch();
+        paintHeader();
+      });
+      $("[data-mega-m]")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        megaOpen = !megaOpen;
+        searchOpen = false;
+        paintMega();
+        paintSearch();
+        paintHeader();
+      });
+      $$("[data-mega-off]").forEach((el) =>
+        el.addEventListener("mouseenter", () => {
+          if (megaOpen) {
+            megaOpen = false;
+            paintMega();
+            paintHeader();
+          }
+        })
+      );
+
+      // Interceptar clics en enlaces de filtro por sucursal o categoría cuando estamos en el Home
+      document.addEventListener("click", (e) => {
+        const t = e.target as HTMLElement;
+        const tiendaLink = t.closest("[data-filter-tienda]") as HTMLElement | null;
+        const catLink = t.closest("[data-filter-categoria]") as HTMLElement | null;
+        if (!tiendaLink && !catLink) return;
+
+        if (location.pathname === "/") {
+          e.preventDefault();
+          megaOpen = false;
+          paintMega();
+          paintHeader();
+
+          const detail: { tiendaId?: string; categoriaId?: string } = {};
+          if (tiendaLink) detail.tiendaId = tiendaLink.dataset.filterTienda ?? "";
+          if (catLink) detail.categoriaId = catLink.dataset.filterCategoria ?? "";
+
+          document.dispatchEvent(new CustomEvent("njx:filter", { detail }));
+          document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+
+      // ── search panel ──────────────────────────────────────────
+      const searchEl = $("[data-search]")!;
+      const searchInput = $("[data-search-input]") as HTMLInputElement;
+      function paintSearch() {
+        searchEl.classList.toggle("opacity-100", searchOpen);
+        searchEl.classList.toggle("opacity-0", !searchOpen);
+        searchEl.classList.toggle("translate-y-0", searchOpen);
+        searchEl.classList.toggle("-translate-y-2.5", !searchOpen);
+        searchEl.classList.toggle("pointer-events-auto", searchOpen);
+        searchEl.classList.toggle("pointer-events-none", !searchOpen);
+      }
+      $("[data-search-toggle]")?.addEventListener("click", () => {
+        searchOpen = !searchOpen;
+        megaOpen = false;
+        paintMega();
+        paintSearch();
+        paintHeader();
+        if (searchOpen) setTimeout(() => searchInput.focus(), 60);
+      });
+      $("[data-search-close]")?.addEventListener("click", () => {
+        searchOpen = false;
+        paintSearch();
+        paintHeader();
+      });
+      function renderSearchResults() {
+        const q = searchInput.value.trim().toLowerCase();
+        const box = $("[data-search-results]")!;
+        if (!q) {
+          box.classList.remove("show");
+          box.innerHTML = "";
+          return;
+        }
+        const hits = PRODUCTS.filter((p) =>
+          (p.name + " " + (p.description || "") + " " + p.cat)
+            .toLowerCase()
+            .includes(q)
+        ).slice(0, 6);
+        box.classList.add("show");
+        box.innerHTML = hits.length
+          ? hits
+              .map(
+                (p) => `
+          <a href="/Productos/${esc(p.handle)}" class="flex items-center gap-4 border-b border-linesoft py-3 hover:bg-tint/40 px-2 transition">
+            <img src="${esc(p.image)}" alt="" class="h-[52px] w-[40px] object-cover" />
+            <div class="flex flex-1 flex-col">
+              <span class="cap-tag">${esc(p.name)}</span>
+              <span class="text-[11px] text-muted">${esc(p.description || "")}</span>
+            </div>
+            <span class="text-[12px]">${fmt(p.price)}</span>
+          </a>`
+              )
+              .join("")
+          : `<div class="cap-tag py-4 text-muted">No se encontraron productos para esa búsqueda.</div>`;
+      }
+      searchInput?.addEventListener("input", renderSearchResults);
+      $$("[data-pop-search]").forEach((b) =>
+        b.addEventListener("click", () => {
+          searchOpen = true;
+          paintSearch();
+          paintHeader();
+          searchInput.value = b.dataset.popSearch!;
+          renderSearchResults();
+          searchInput.focus();
+        })
+      );
+
+      // ── drawers ───────────────────────────────────────────────
+      const overlay = $("[data-overlay]")!;
+      const cartDrawer = $("[data-cart-drawer]")!;
+      const wishDrawer = $("[data-wish-drawer]")!;
+      function setDrawer(which: "cart" | "wish" | null) {
+        overlay.classList.toggle("on", !!which);
+        cartDrawer.classList.toggle("on", which === "cart");
+        wishDrawer.classList.toggle("on", which === "wish");
+        document.body.style.overflow = which ? "hidden" : "";
+      }
+      overlay.addEventListener("click", () => setDrawer(null));
+      $$("[data-drawer-close]").forEach((b) =>
+        b.addEventListener("click", () => setDrawer(null))
+      );
+      $$("[data-open-cart]").forEach((b) =>
+        b.addEventListener("click", () => setDrawer("cart"))
+      );
+      $$("[data-open-wish]").forEach((b) =>
+        b.addEventListener("click", () => setDrawer("wish"))
+      );
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          setDrawer(null);
+          qvClose();
+        }
+      });
+
+      // ── cart ──────────────────────────────────────────────────
+      function renderCart() {
+        const lines = cart.get();
+        const count = lines.reduce((a, l) => a + l.quantity, 0);
+        $$("[data-cart-count]").forEach((n) => (n.textContent = String(count)));
+        const subtotal = lines.reduce(
+          (a, l) => a + (byHandle.get(l.handle)?.price ?? 0) * l.quantity,
+          0
+        );
+        const remaining = Math.max(0, FREE_SHIP - subtotal);
+        $("[data-ship-msg]")!.textContent =
+          remaining > 0
+            ? `Te faltan ${fmt(remaining)} para envío gratis`
+            : "Tienes envío gratis en tu pedido";
+        $("[data-ship-bar]")!.style.width =
+          Math.min(100, (subtotal / FREE_SHIP) * 100) + "%";
+        $("[data-cart-subtotal]")!.textContent = fmt(subtotal);
+        $("[data-cart-lines]")!.innerHTML = lines.length
+          ? lines
+              .map((l) => {
+                const p = byHandle.get(l.handle);
+                if (!p) return "";
+                return `<div class="flex gap-4 border-b border-linesoft py-6">
+            <img src="${esc(p.image)}" alt="" class="h-[78px] w-[58px] flex-none object-cover" />
+            <div class="flex min-w-0 flex-1 flex-col gap-2">
+              <a href="/Productos/${esc(p.handle)}" class="cap-tag">${esc(p.name)}</a>
+              <span class="cap-xs text-muted" style="letter-spacing:.08em">Talla ${esc(l.size)} · ${esc(l.color)}</span>
+              <div class="mt-1.5 flex items-center justify-between">
+                <span class="flex items-center border border-line">
+                  <button data-l-dec="${esc(l.key)}" class="h-[30px] w-[30px] cursor-pointer">−</button>
+                  <span class="w-[26px] text-center text-[11px]">${l.quantity}</span>
+                  <button data-l-inc="${esc(l.key)}" class="h-[30px] w-[30px] cursor-pointer">+</button>
+                </span>
+                <span class="text-[12px]">${fmt(p.price * l.quantity)}</span>
+              </div>
+            </div>
+          </div>`;
+              })
+              .join("")
+          : `<div class="cap-tag py-16 text-center text-muted">Tu bolsa está vacía.</div>`;
+      }
+      cart.subscribe(renderCart);
+      $("[data-cart-lines]")?.addEventListener("click", (e) => {
+        const t = (e.target as HTMLElement).closest(
+          "button"
+        ) as HTMLElement | null;
+        if (!t) return;
+        const line = (k: string) => cart.get().find((x) => x.key === k);
+        if (t.dataset.lInc) {
+          const l = line(t.dataset.lInc);
+          if (l) setCartQty(l.key, l.quantity + 1);
+        }
+        if (t.dataset.lDec) {
+          const l = line(t.dataset.lDec);
+          if (l) setCartQty(l.key, l.quantity - 1);
+        }
+      });
+      $("[data-checkout]")?.addEventListener("click", () => {
+        $("[data-thanks-root]")?.classList.add("on");
+      });
+      $("[data-thanks-root]")?.addEventListener("click", (e) => {
+        const t = e.target as HTMLElement;
+        if (
+          t === $("[data-thanks-root]") ||
+          t.closest("[data-thanks-close]")
+        )
+          $("[data-thanks-root]")!.classList.remove("on");
+      });
+
+      // ── wishlist ──────────────────────────────────────────────
+      function renderWish() {
+        const list = wishlist.get();
+        $$("[data-wish-count]").forEach(
+          (n) => (n.textContent = String(list.length))
+        );
+        $("[data-wish-lines]")!.innerHTML = list.length
+          ? list
+              .map((h) => {
+                const p = byHandle.get(h);
+                if (!p) return "";
+                return `<div class="flex gap-4 border-b border-linesoft py-6">
+            <img src="${esc(p.image)}" alt="" class="h-[78px] w-[58px] flex-none object-cover" />
+            <div class="flex min-w-0 flex-1 flex-col gap-2">
+              <a href="/Productos/${esc(p.handle)}" class="cap-tag">${esc(p.name)}</a>
+              <span class="text-[11px] text-soft">${fmt(p.price)}</span>
+              <div class="mt-1.5 flex gap-4">
+                <button data-w-move="${esc(p.handle)}" class="cap-xs link-u cursor-pointer" style="letter-spacing:.16em;text-underline-offset:4px">Mover a la bolsa</button>
+                <button data-w-rm="${esc(p.handle)}" class="cap-xs cursor-pointer text-muted" style="letter-spacing:.16em">Quitar</button>
+              </div>
+            </div>
+          </div>`;
+              })
+              .join("")
+          : `<div class="cap-tag py-16 text-center text-muted">Aún no tienes piezas guardadas.</div>`;
+
+        $$("[data-card-wish]").forEach((b) => {
+          const on = list.includes(b.dataset.cardWish!);
+          b.classList.toggle("text-acc", on);
+          b.classList.toggle("text-ink/45", !on);
+        });
+      }
+      wishlist.subscribe(renderWish);
+      $("[data-wish-lines]")?.addEventListener("click", (e) => {
+        const t = (e.target as HTMLElement).closest(
+          "button"
+        ) as HTMLElement | null;
+        if (!t) return;
+        if (t.dataset.wMove) {
+          const p = byHandle.get(t.dataset.wMove);
+          if (p) {
+            addToCart(
+              p.handle,
+              p.sizes[1] ?? "M",
+              p.tiendas?.[0]?.tiendaNombre ?? "Sucursal Central"
+            );
+            toggleWishlist(p.handle);
+            setDrawer("cart");
+          }
+        }
+        if (t.dataset.wRm) toggleWishlist(t.dataset.wRm);
+      });
+
+      // ── quick view ────────────────────────────────────────────
+      const qvRoot = $("[data-qv-root]")!;
+      let qvState = { handle: "", color: 0, size: "", acc: "desc" };
+      const qvClose = () => qvRoot.classList.remove("on");
+      $("[data-qv-dim]")?.addEventListener("click", qvClose);
+
+      function openQuickView(handle: string, keep = false) {
+        const p = byHandle.get(handle);
+        if (!p) return;
+        if (!keep) qvState = { handle, color: 0, size: "", acc: "desc" };
+        qvState.handle = handle;
+
+        const tiendasHTML =
+          p.tiendas && p.tiendas.length > 0
+            ? p.tiendas
+                .map(
+                  (t: any) =>
+                    `<div class="flex justify-between py-1 border-b border-linesoft"><span>${esc(t.tiendaNombre)}</span><span>${fmt(t.precio)} · ${t.stock > 0 ? t.stock + " disp." : "Agotado"}</span></div>`
+                )
+                .join("")
+            : "Disponible en tienda principal";
+
+        const accs = [
+          ["desc", "Descripción", esc(p.description || "")],
+          ["stores", "Disponibilidad por sucursal", tiendasHTML],
+          [
+            "ship",
+            "Envío y devoluciones",
+            "Envío gratuito en compras superiores a $150. Cambios sin costo dentro de 30 días.",
+          ],
+        ];
+
+        $("[data-qv-panel]")!.innerHTML = `
+          <div class="flex flex-col gap-2 bg-tint p-2">
+            <img data-qv-main src="${esc(p.image)}" alt="${esc(p.name)}" class="aspect-[3/4] w-full object-cover" />
+            ${
+              p.image2
+                ? `<div class="flex gap-2">
+              <button data-qv-img="${esc(p.image)}" class="w-[64px] flex-none cursor-pointer border border-ink"><img src="${esc(p.image)}" alt="" class="aspect-[3/4] w-full object-cover" /></button>
+              <button data-qv-img="${esc(p.image2)}" class="w-[64px] flex-none cursor-pointer border border-line opacity-80 hover:opacity-100"><img src="${esc(p.image2)}" alt="" class="aspect-[3/4] w-full object-cover" /></button>
+            </div>`
+                : ""
+            }
+          </div>
+          <div class="flex flex-col gap-5 p-8 lg:p-12">
+            <div class="flex items-start justify-between gap-5">
+              <div class="flex flex-col gap-2.5">
+                <div class="cap-xs text-muted">STOCK TOTAL: ${p.stockTotal} UNIDADES</div>
+                <h3 class="m-0 text-[20px] font-normal tracking-[0.16em]">${esc(p.name.toUpperCase())}</h3>
+              </div>
+              <button data-qv-close class="cap cursor-pointer" style="letter-spacing:.18em">Cerrar</button>
+            </div>
+            <div class="text-[14px] tracking-[0.05em]">${fmt(p.price)}</div>
+            <div class="flex flex-col gap-3">
+              <div class="cap-xs text-muted">TALLA</div>
+              <div class="flex flex-wrap gap-2">
+                ${p.sizes.map((z: string) => `<button data-qv-size="${esc(z)}" class="cap cursor-pointer border px-4 py-2.5 transition ${qvState.size === z ? "border-ink bg-ink text-white" : "border-line"}" style="letter-spacing:.14em">${esc(z)}</button>`).join("")}
+              </div>
+            </div>
+            <button data-qv-add class="btn-ink mt-1.5 p-4 ${qvState.size ? "" : "is-off"}">${qvState.size ? "Agregar a la bolsa — " + esc(qvState.size) : "Selecciona una talla"}</button>
+            <div class="mt-2.5 border-t border-line">
+              ${accs
+                .map(
+                  (a) => `
+                <div class="border-b border-line">
+                  <button data-qv-acc="${a[0]}" class="cap flex w-full cursor-pointer justify-between py-4" style="letter-spacing:.18em"><span>${a[1]}</span><span>${qvState.acc === a[0] ? "−" : "+"}</span></button>
+                  ${qvState.acc === a[0] ? `<div class="pb-5 text-[12px] leading-loose text-soft">${a[2]}</div>` : ""}
+                </div>`
+                )
+                .join("")}
+            </div>
+            <a href="/Productos/${esc(p.handle)}" class="cap link-u self-start" style="letter-spacing:.2em">Ver página completa del producto</a>
+          </div>`;
+        qvRoot.classList.add("on");
+      }
+
+      $("[data-qv-panel]")?.addEventListener("click", (e) => {
+        const t = e.target as HTMLElement;
+        if (t.closest("[data-qv-close]")) {
+          qvClose();
+          return;
+        }
+        const gi = t.closest("[data-qv-img]") as HTMLElement | null;
+        if (gi) {
+          const main = $("[data-qv-main]") as HTMLImageElement | null;
+          if (main) main.src = gi.dataset.qvImg!;
+          $$("[data-qv-img]").forEach((x) => {
+            const on = x === gi;
+            x.classList.toggle("border-ink", on);
+            x.classList.toggle("border-line", !on);
+            x.classList.toggle("opacity-80", !on);
+          });
+          return;
+        }
+        const sz = t.closest("[data-qv-size]") as HTMLElement | null;
+        if (sz) {
+          qvState.size = sz.dataset.qvSize!;
+          openQuickView(qvState.handle, true);
+          return;
+        }
+        const ac = t.closest("[data-qv-acc]") as HTMLElement | null;
+        if (ac) {
+          qvState.acc =
+            qvState.acc === ac.dataset.qvAcc ? "" : ac.dataset.qvAcc!;
+          openQuickView(qvState.handle, true);
+          return;
+        }
+        if (t.closest("[data-qv-add]")) {
+          if (!qvState.size) return;
+          const p = byHandle.get(qvState.handle)!;
+          addToCart(
+            p.handle,
+            qvState.size,
+            p.tiendas?.[0]?.tiendaNombre ?? "Sucursal Central"
+          );
+          qvClose();
+          setDrawer("cart");
+        }
+      });
+
+      // ── global card delegation ────────────────────────────────
+      document.addEventListener("click", (e) => {
+        const t = e.target as HTMLElement;
+        const wish = t.closest("[data-card-wish]") as HTMLElement | null;
+        if (wish) {
+          e.preventDefault();
+          const added = toggleWishlist(wish.dataset.cardWish!);
+          toast(added ? "Guardado en favoritos" : "Eliminado de favoritos");
+          return;
+        }
+        const qv = t.closest("[data-card-qv]") as HTMLElement | null;
+        if (qv) {
+          e.preventDefault();
+          openQuickView(qv.dataset.cardQv!);
+          return;
+        }
+        const open = t.closest("[data-card-open-sizes]") as HTMLElement | null;
+        if (open) {
+          e.preventDefault();
+          const card = open.closest("[data-card]")!;
+          card.querySelector("[data-card-bar]")!.classList.add("hidden");
+          const sizes = card.querySelector("[data-card-sizes]")!;
+          sizes.classList.remove("hidden");
+          sizes.classList.add("flex");
+          return;
+        }
+        const size = t.closest("[data-card-size]") as HTMLElement | null;
+        if (size) {
+          e.preventDefault();
+          const card = size.closest("[data-card]") as HTMLElement;
+          const p = byHandle.get(size.dataset.h!);
+          if (p) {
+            addToCart(
+              p.handle,
+              size.dataset.cardSize!,
+              p.tiendas?.[0]?.tiendaNombre ?? "Sucursal Central"
+            );
+            card.querySelector("[data-card-sizes]")!.classList.add("hidden");
+            card.querySelector("[data-card-bar]")!.classList.remove("hidden");
+            setDrawer("cart");
+          }
+          return;
+        }
+      });
+
+      $("[data-year]")!.textContent = String(new Date().getFullYear());
+      paintHeader();
+      paintMega();
+      paintSearch();
+      renderCart();
+      renderWish();
+    </script>
+  </body>
 </html>
