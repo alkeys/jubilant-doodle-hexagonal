@@ -21,6 +21,10 @@ public class VentaRequest {
     @Schema(description = "ID único del cliente que realiza la compra", example = "22222222-2222-2222-2222-222222222222")
     private UUID clienteId;
 
+    @NotNull(message = "El ID de la tienda es obligatorio")
+    @Schema(description = "ID de la sucursal donde se adquiere el producto", example = "33333333-3333-3333-3333-333333333331")
+    private UUID tiendaId;
+
     @NotNull(message = "El ID del producto es obligatorio")
     @Schema(description = "ID único del producto que se va a comprar", example = "55555555-5555-5555-5555-555555555551")
     private UUID productoId;

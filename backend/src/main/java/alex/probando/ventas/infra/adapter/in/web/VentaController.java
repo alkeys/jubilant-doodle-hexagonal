@@ -49,6 +49,7 @@ public class VentaController {
     public VentaResponse registrarVenta(@Valid @RequestBody VentaRequest request) {
         Venta venta = createVentaUseCase.createVenta(
                 request.getClienteId(),
+                request.getTiendaId(),
                 request.getProductoId(),
                 request.getCantidad()
         );

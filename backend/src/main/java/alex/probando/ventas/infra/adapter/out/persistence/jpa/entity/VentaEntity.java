@@ -30,6 +30,9 @@ public class VentaEntity {
     @Column(name = "cliente_id", nullable = false)
     private UUID clienteId;
 
+    @Column(name = "tienda_id", nullable = false)
+    private UUID tiendaId;
+
     @Column(name = "producto_id", nullable = false)
     private UUID productoId;
 

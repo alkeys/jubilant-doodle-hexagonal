@@ -7,6 +7,7 @@ import java.util.UUID;
 public record Venta(
         UUID id,
         UUID clienteId,
+        UUID tiendaId,
         UUID productoId,
         int cantidad,
         BigDecimal precioUnitario,
@@ -16,6 +17,9 @@ public record Venta(
     public Venta {
         if (clienteId == null) {
             throw new IllegalArgumentException("El cliente no puede ser nulo");
+        }
+        if (tiendaId == null) {
+            throw new IllegalArgumentException("La tienda no puede ser nula");
         }
         if (productoId == null) {
             throw new IllegalArgumentException("El producto no puede ser nulo");
@@ -34,7 +38,7 @@ public record Venta(
         }
     }
 
-    public Venta(UUID clienteId, UUID productoId, int cantidad, BigDecimal precioUnitario) {
-        this(null, clienteId, productoId, cantidad, precioUnitario, precioUnitario.multiply(BigDecimal.valueOf(cantidad)), Instant.now());
+    public Venta(UUID clienteId, UUID tiendaId, UUID productoId, int cantidad, BigDecimal precioUnitario) {
+        this(null, clienteId, tiendaId, productoId, cantidad, precioUnitario, precioUnitario.multiply(BigDecimal.valueOf(cantidad)), Instant.now());
     }
 }

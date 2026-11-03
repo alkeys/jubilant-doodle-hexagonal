@@ -15,13 +15,16 @@ public record VentaResponse(
         @Schema(description = "ID del cliente comprador", example = "22222222-2222-2222-2222-222222222222")
         UUID clienteId,
 
+        @Schema(description = "ID de la sucursal donde se realizó la compra", example = "33333333-3333-3333-3333-333333333331")
+        UUID tiendaId,
+
         @Schema(description = "ID del producto adquirido", example = "55555555-5555-5555-5555-555555555551")
         UUID productoId,
 
         @Schema(description = "Cantidad vendida", example = "2")
         int cantidad,
 
-        @Schema(description = "Precio unitario cobrado", example = "2.50")
+        @Schema(description = "Precio unitario cobrado en la sucursal", example = "2.50")
         BigDecimal precioUnitario,
 
         @Schema(description = "Total de la venta", example = "5.00")

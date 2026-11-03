@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import alex.probando.productos.application.port.out.ProductoRepositoryPort;
 import alex.probando.productos.domain.Producto;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.shared.exception.ResourceNotFoundException;
+import alex.probando.tiendas.application.port.out.TiendaRepositoryPort;
 import alex.probando.usuarios.application.port.out.UsuarioRepositoryPort;
 import alex.probando.usuarios.domain.Usuario;
 import alex.probando.ventas.application.port.in.CreateVentaUseCase;
@@ -34,12 +36,13 @@ public class VentaService implements
     private final VentaRepositoryPort ventaRepositoryPort;
     private final ProductoRepositoryPort productoRepositoryPort;
     private final UsuarioRepositoryPort usuarioRepositoryPort;
+    private final TiendaRepositoryPort tiendaRepositoryPort;
 
     private static final int DEFAULT_TOP_LIMIT = 10;
     private static final int MAX_TOP_LIMIT = 50;
 
     @Override
-    public Venta createVenta(UUID clienteId, UUID productoId, int cantidad) {
+    public Venta createVenta(UUID clienteId, UUID tiendaId, UUID productoId, int cantidad) {
         if (cantidad <= 0) {
             throw new IllegalArgumentException("La cantidad debe ser mayor a 0");
         }
@@ -53,7 +56,12 @@ public class VentaService implements
                     "El cliente con ID " + clienteId + " está inactivo y no puede realizar compras");
         }
 
-        // 2. Validar existencia y estado del producto
+        // 2. Validar existencia de la sucursal/tienda
+        if (tiendaRepositoryPort.findById(tiendaId).isEmpty()) {
+            throw new ResourceNotFoundException("La sucursal no existe con ID: " + tiendaId);
+        }
+
+        // 3. Validar existencia y estado del producto
         Producto producto = productoRepositoryPort.findById(productoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + productoId));
 
@@ -62,23 +70,34 @@ public class VentaService implements
                     "El producto '" + producto.nombre() + "' no se encuentra activo para la venta");
         }
 
-        // 3. Validar disponibilidad de stock
-        if (producto.stock() < cantidad) {
-            throw new IllegalArgumentException("Stock insuficiente para el producto '" + producto.nombre()
-                    + "'. Stock disponible: " + producto.stock() + ", solicitado: " + cantidad);
+        // 4. Obtener y validar disponibilidad en la sucursal especificada
+        TiendaProducto inventario = producto.obtenerInventario(tiendaId)
+                .orElseThrow(() -> new ResourceNotFoundException("El producto '" + producto.nombre()
+                        + "' no está disponible para la venta en la sucursal indicada"));
+
+        if (!inventario.activo()) {
+            throw new IllegalArgumentException("El producto '" + producto.nombre()
+                    + "' está desactivado en la sucursal seleccionada");
         }
 
-        // 4. Descontar stock del producto de forma atómica
-        Producto productoActualizado = producto.withStock(producto.stock() - cantidad);
-        productoRepositoryPort.save(productoActualizado);
+        // 5. Validar disponibilidad de stock en dicha sucursal
+        if (inventario.stock() < cantidad) {
+            throw new IllegalArgumentException("Stock insuficiente en esta sucursal para el producto '" + producto.nombre()
+                    + "'. Stock disponible: " + inventario.stock() + ", solicitado: " + cantidad);
+        }
 
-        // 5. Calcular totales a partir del precio oficial actual del producto
-        BigDecimal precioUnitario = producto.precio();
+        // 6. Descontar stock de la sucursal
+        TiendaProducto inventarioActualizado = inventario.withStock(inventario.stock() - cantidad);
+        productoRepositoryPort.saveInventario(productoId, inventarioActualizado);
+
+        // 7. Calcular totales a partir del precio unitario específico de esta tienda
+        BigDecimal precioUnitario = inventario.precio();
         BigDecimal total = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
 
         Venta nuevaVenta = new Venta(
                 null,
                 clienteId,
+                tiendaId,
                 productoId,
                 cantidad,
                 precioUnitario,
@@ -98,19 +117,14 @@ public class VentaService implements
     @Override
     @Transactional(readOnly = true)
     public List<Venta> listVentas(UUID clienteId, UUID productoId) {
-        if (clienteId != null) {
-            return ventaRepositoryPort.findByClienteId(clienteId);
-        }
-        if (productoId != null) {
-            return ventaRepositoryPort.findByProductoId(productoId);
-        }
-        return ventaRepositoryPort.findAll();
+        return ventaRepositoryPort.findAll().stream()
+                .filter(v -> clienteId == null || v.clienteId().equals(clienteId))
+                .filter(v -> productoId == null || v.productoId().equals(productoId))
+                .toList();
     }
 
     @Override
-    @Transactional(readOnly = true) // el transaction sierve para evitar que el metodo no sea atómico osea
-                                    // si hay un error no se guarda y si no hay ningun error se guarda y se hace
-                                    // un tipo de rolback
+    @Transactional(readOnly = true)
     public List<ProductoMasVendido> getProductosMasVendidos(int limite) {
         int limiteEfectivo = limite <= 0 ? DEFAULT_TOP_LIMIT : Math.min(limite, MAX_TOP_LIMIT);
         return ventaRepositoryPort.findTopProductosVendidos(limiteEfectivo);

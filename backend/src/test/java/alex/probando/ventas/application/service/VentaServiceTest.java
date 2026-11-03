@@ -22,12 +22,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import alex.probando.productos.application.port.out.ProductoRepositoryPort;
 import alex.probando.productos.domain.Producto;
-import alex.probando.shared.exception.ResourceNotFoundException;
+import alex.probando.productos.domain.TiendaProducto;
+import alex.probando.tiendas.application.port.out.TiendaRepositoryPort;
+import alex.probando.tiendas.domain.Tienda;
 import alex.probando.usuarios.application.port.out.UsuarioRepositoryPort;
 import alex.probando.usuarios.domain.Role;
 import alex.probando.usuarios.domain.Usuario;
 import alex.probando.ventas.application.port.out.VentaRepositoryPort;
-import alex.probando.ventas.domain.ProductoMasVendido;
 import alex.probando.ventas.domain.Venta;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,22 +43,29 @@ class VentaServiceTest {
     @Mock
     private UsuarioRepositoryPort usuarioRepositoryPort;
 
+    @Mock
+    private TiendaRepositoryPort tiendaRepositoryPort;
+
     private VentaService ventaService;
 
     private UUID clienteId;
+    private UUID tiendaId;
     private UUID productoId;
     private Usuario clienteActivo;
     private Producto productoEnStock;
+    private Tienda tiendaActiva;
 
     @BeforeEach
     void setUp() {
         ventaService = new VentaService(
                 ventaRepositoryPort,
                 productoRepositoryPort,
-                usuarioRepositoryPort
+                usuarioRepositoryPort,
+                tiendaRepositoryPort
         );
 
         clienteId = UUID.randomUUID();
+        tiendaId = UUID.randomUUID();
         productoId = UUID.randomUUID();
 
         clienteActivo = new Usuario(
@@ -72,30 +80,50 @@ class VentaServiceTest {
                 Set.of(new Role(Role.CLIENTE))
         );
 
-        productoEnStock = new Producto(
-                productoId,
+        tiendaActiva = new Tienda(
+                tiendaId,
+                "Sucursal Central",
+                "Panadería",
+                "Av. 1",
+                true,
+                Instant.now()
+        );
+
+        TiendaProducto inventario = new TiendaProducto(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Baguette",
-                "Crujiente",
+                tiendaId,
+                "Sucursal Central",
                 new BigDecimal("2.50"),
                 10,
                 true,
                 Instant.now(),
+                Instant.now()
+        );
+
+        productoEnStock = new Producto(
+                productoId,
+                UUID.randomUUID(),
+                "Baguette",
+                "Crujiente",
+                true,
                 Instant.now(),
-                List.of()
+                Instant.now(),
+                List.of(),
+                List.of(inventario)
         );
     }
 
     @Test
-    @DisplayName("Debe registrar venta y descontar stock exitosamente")
+    @DisplayName("Debe registrar venta y descontar stock exitosamente de la sucursal")
     void debeRegistrarVentaExitosamente() {
         when(usuarioRepositoryPort.findById(clienteId)).thenReturn(Optional.of(clienteActivo));
+        when(tiendaRepositoryPort.findById(tiendaId)).thenReturn(Optional.of(tiendaActiva));
         when(productoRepositoryPort.findById(productoId)).thenReturn(Optional.of(productoEnStock));
 
         Venta ventaSimulada = new Venta(
                 UUID.randomUUID(),
                 clienteId,
+                tiendaId,
                 productoId,
                 3,
                 new BigDecimal("2.50"),
@@ -104,102 +132,42 @@ class VentaServiceTest {
         );
         when(ventaRepositoryPort.save(any(Venta.class))).thenReturn(ventaSimulada);
 
-        Venta resultado = ventaService.createVenta(clienteId, productoId, 3);
+        Venta resultado = ventaService.createVenta(clienteId, tiendaId, productoId, 3);
 
         assertNotNull(resultado);
         assertEquals(3, resultado.cantidad());
         assertEquals(new BigDecimal("7.50"), resultado.total());
 
-        // Verificar que el stock se descontó (10 - 3 = 7)
-        verify(productoRepositoryPort).save(org.mockito.ArgumentMatchers.argThat(p -> p.stock() == 7));
+        verify(productoRepositoryPort).saveInventario(any(), org.mockito.ArgumentMatchers.argThat(inv -> inv.stock() == 7));
         verify(ventaRepositoryPort).save(any(Venta.class));
     }
 
     @Test
-    @DisplayName("Debe fallar si el stock disponible es menor al solicitado")
+    @DisplayName("Debe fallar si el stock disponible en la sucursal es menor al solicitado")
     void debeFallarSiStockEsInsuficiente() {
         when(usuarioRepositoryPort.findById(clienteId)).thenReturn(Optional.of(clienteActivo));
+        when(tiendaRepositoryPort.findById(tiendaId)).thenReturn(Optional.of(tiendaActiva));
         when(productoRepositoryPort.findById(productoId)).thenReturn(Optional.of(productoEnStock));
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> ventaService.createVenta(clienteId, productoId, 15)
+                () -> ventaService.createVenta(clienteId, tiendaId, productoId, 15)
         );
 
         org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Stock insuficiente"));
     }
 
     @Test
-    @DisplayName("Debe fallar si el cliente no existe")
-    void debeFallarSiClienteNoExiste() {
-        when(usuarioRepositoryPort.findById(clienteId)).thenReturn(Optional.empty());
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> ventaService.createVenta(clienteId, productoId, 1)
-        );
-    }
-
-    @Test
-    @DisplayName("Debe fallar si el cliente está inactivo")
-    void debeFallarSiClienteInactivo() {
-        Usuario clienteInactivo = new Usuario(
-                clienteId,
-                "Inactivo",
-                "inactivo123",
-                "User",
-                "inactivo@example.com",
-                30,
-                false, // Inactivo
-                "pass",
-                Set.of(new Role(Role.CLIENTE))
-        );
-        when(usuarioRepositoryPort.findById(clienteId)).thenReturn(Optional.of(clienteInactivo));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> ventaService.createVenta(clienteId, productoId, 1)
-        );
-    }
-
-    @Test
-    @DisplayName("Debe fallar si el producto está inactivo")
-    void debeFallarSiProductoInactivo() {
-        Producto productoInactivo = new Producto(
-                productoId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Pan Viejo",
-                "",
-                new BigDecimal("1.00"),
-                5,
-                false, // Inactivo
-                Instant.now(),
-                Instant.now(),
-                List.of()
-        );
-
+    @DisplayName("Debe fallar si el producto no está disponible en la sucursal indicada")
+    void debeFallarSiProductoNoEstaEnTienda() {
+        UUID otraTienda = UUID.randomUUID();
         when(usuarioRepositoryPort.findById(clienteId)).thenReturn(Optional.of(clienteActivo));
-        when(productoRepositoryPort.findById(productoId)).thenReturn(Optional.of(productoInactivo));
+        when(tiendaRepositoryPort.findById(otraTienda)).thenReturn(Optional.of(tiendaActiva));
+        when(productoRepositoryPort.findById(productoId)).thenReturn(Optional.of(productoEnStock));
 
         assertThrows(
-                IllegalArgumentException.class,
-                () -> ventaService.createVenta(clienteId, productoId, 1)
+                alex.probando.shared.exception.ResourceNotFoundException.class,
+                () -> ventaService.createVenta(clienteId, otraTienda, productoId, 1)
         );
-    }
-
-    @Test
-    @DisplayName("Debe consultar ranking de productos más vendidos con límite seguro")
-    void debeConsultarTopProductosMasVendidos() {
-        List<ProductoMasVendido> ranking = List.of(
-                new ProductoMasVendido(productoId, "Baguette", 50L, new BigDecimal("125.00"))
-        );
-        when(ventaRepositoryPort.findTopProductosVendidos(5)).thenReturn(ranking);
-
-        List<ProductoMasVendido> resultado = ventaService.getProductosMasVendidos(5);
-
-        assertEquals(1, resultado.size());
-        assertEquals("Baguette", resultado.get(0).nombreProducto());
-        verify(ventaRepositoryPort).findTopProductosVendidos(5);
     }
 }

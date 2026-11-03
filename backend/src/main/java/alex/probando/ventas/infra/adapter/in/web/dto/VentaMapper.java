@@ -16,6 +16,7 @@ public final class VentaMapper {
         return VentaResponse.builder()
                 .id(domain.id())
                 .clienteId(domain.clienteId())
+                .tiendaId(domain.tiendaId())
                 .productoId(domain.productoId())
                 .cantidad(domain.cantidad())
                 .precioUnitario(domain.precioUnitario())

@@ -16,6 +16,7 @@ public class VentaJpaMapper {
         VentaEntity entity = new VentaEntity();
         entity.setId(domain.id());
         entity.setClienteId(domain.clienteId());
+        entity.setTiendaId(domain.tiendaId());
         entity.setProductoId(domain.productoId());
         entity.setCantidad(domain.cantidad());
         entity.setPrecioUnitario(domain.precioUnitario());
@@ -34,6 +35,7 @@ public class VentaJpaMapper {
         return new Venta(
                 entity.getId(),
                 entity.getClienteId(),
+                entity.getTiendaId(),
                 entity.getProductoId(),
                 entity.getCantidad(),
                 entity.getPrecioUnitario(),
