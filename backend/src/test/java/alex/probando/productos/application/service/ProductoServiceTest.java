@@ -27,6 +27,7 @@ import alex.probando.categorias.domain.Categoria;
 import alex.probando.productos.application.port.out.ProductoRepositoryPort;
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.shared.exception.ResourceNotFoundException;
 import alex.probando.shared.storage.port.FileStoragePort;
 import alex.probando.tiendas.application.port.out.TiendaRepositoryPort;
@@ -67,10 +68,11 @@ class ProductoServiceTest {
     @Test
     @DisplayName("Debe crear producto exitosamente cuando tienda y categoría existen")
     void debeCrearProductoExitosamente() {
-        Producto nuevo = new Producto(tiendaId, categoriaId, "Baguette", "Pan francés clásico", new BigDecimal("1.50"), 20);
+        TiendaProducto inv = new TiendaProducto(tiendaId, "Central", new BigDecimal("1.50"), 20);
+        Producto nuevo = new Producto(null, categoriaId, "Baguette", "Pan francés clásico", true, null, null, List.of(), List.of(inv));
 
-        when(tiendaRepositoryPort.findById(tiendaId)).thenReturn(Optional.of(new Tienda("Central", "", "")));
         when(categoriaRepositoryPort.findById(categoriaId)).thenReturn(Optional.of(new Categoria("Panes", "")));
+        when(tiendaRepositoryPort.findById(tiendaId)).thenReturn(Optional.of(new Tienda("Central", "", "")));
         when(productoRepositoryPort.save(nuevo)).thenReturn(nuevo);
 
         Producto resultado = productoService.createProducto(nuevo);
@@ -81,10 +83,12 @@ class ProductoServiceTest {
     }
 
     @Test
-    @DisplayName("Debe fallar al crear si la tienda no existe")
+    @DisplayName("Debe fallar al crear si la tienda del inventario no existe")
     void debeFallarSiTiendaNoExiste() {
-        Producto nuevo = new Producto(tiendaId, categoriaId, "Baguette", "Pan francés clásico", new BigDecimal("1.50"), 20);
+        TiendaProducto inv = new TiendaProducto(tiendaId, "Central", new BigDecimal("1.50"), 20);
+        Producto nuevo = new Producto(null, categoriaId, "Baguette", "Pan francés clásico", true, null, null, List.of(), List.of(inv));
 
+        when(categoriaRepositoryPort.findById(categoriaId)).thenReturn(Optional.of(new Categoria("Panes", "")));
         when(tiendaRepositoryPort.findById(tiendaId)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> productoService.createProducto(nuevo));
@@ -94,10 +98,11 @@ class ProductoServiceTest {
     @DisplayName("Debe subir múltiples imágenes y asignar la primera como principal")
     void debeSubirMultiplesImagenes() {
         UUID prodId = UUID.randomUUID();
-        Producto prodExistente = new Producto(prodId, tiendaId, categoriaId, "Baguette", "", new BigDecimal("1.50"), 10, true, null, null, List.of());
+        Producto prodExistente = new Producto(prodId, categoriaId, "Baguette", "", true, null, null, List.of(), List.of());
 
         when(productoRepositoryPort.findById(prodId)).thenReturn(Optional.of(prodExistente));
-        when(fileStoragePort.storeFile(any(), eq("productos"))).thenReturn("/uploads/productos/test.jpg");
+        when(fileStoragePort.storeFile(any(), eq("productos/" + prodId))).thenReturn("/uploads/productos/test.jpg");
+        when(productoRepositoryPort.saveImagen(any(), any())).thenAnswer(i -> i.getArgument(1));
 
         MockMultipartFile file1 = new MockMultipartFile("imagenes", "foto1.jpg", "image/jpeg", "bytes1".getBytes());
         MockMultipartFile file2 = new MockMultipartFile("imagenes", "foto2.png", "image/png", "bytes2".getBytes());
@@ -115,7 +120,7 @@ class ProductoServiceTest {
     @DisplayName("Debe rechazar archivos con formato no permitido")
     void debeRechazarFormatoNoPermitido() {
         UUID prodId = UUID.randomUUID();
-        Producto prodExistente = new Producto(prodId, tiendaId, categoriaId, "Baguette", "", new BigDecimal("1.50"), 10, true, null, null, List.of());
+        Producto prodExistente = new Producto(prodId, categoriaId, "Baguette", "", true, null, null, List.of(), List.of());
 
         when(productoRepositoryPort.findById(prodId)).thenReturn(Optional.of(prodExistente));
 
@@ -127,10 +132,9 @@ class ProductoServiceTest {
     @Test
     @DisplayName("Debe limitar el rango a máximo 50 para no saturar la base de datos")
     void debeAcotarLimiteMaximoParaNoSaturarBaseDeDatos() {
-        Producto prod = new Producto(UUID.randomUUID(), tiendaId, categoriaId, "Baguette", "", new BigDecimal("1.50"), 10, true, null, null, List.of());
+        Producto prod = new Producto(UUID.randomUUID(), categoriaId, "Baguette", "", true, null, null, List.of(), List.of());
         when(productoRepositoryPort.findProductosPrincipales(0, 50)).thenReturn(List.of(prod));
 
-        // Solicitando 100 productos (debe acotarse a 50) y página negativa (debe acotarse a 0)
         List<Producto> resultado = productoService.getProductosPrincipales(-5, 100);
 
         assertEquals(1, resultado.size());

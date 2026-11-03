@@ -6,35 +6,47 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
-@Schema(name = "ProductoResponse", description = "Información completa de un producto del catálogo")
+@Schema(name = "ProductoResponse", description = "Información completa de un producto del catálogo con su disponibilidad multitienda")
 @Builder
 public record ProductoResponse(
-    @Schema(description = "Identificador único (UUID)", example = "123e4567-e89b-12d3-a456-426614174000")
+    @Schema(description = "Identificador único (UUID) del producto en el catálogo", example = "123e4567-e89b-12d3-a456-426614174000")
     String id,
-
-    @Schema(description = "ID de la sucursal/tienda donde se vende", example = "a1b2c3d4-e89b-12d3-a456-426614174000")
-    String tiendaId,
 
     @Schema(description = "ID de la categoría a la que pertenece", example = "b2c3d4e5-e89b-12d3-a456-426614174000")
     String categoriaId,
 
-    @Schema(description = "Nombre del producto", example = "Croissant de Mantequilla")
+    @Schema(description = "Nombre del producto", example = "Camiseta Oversize Algodón Premium")
     String nombre,
 
-    @Schema(description = "Descripción detallada del producto", example = "Croissant francés horneado a diario con mantequilla de primera calidad")
+    @Schema(description = "Descripción detallada del producto", example = "Playera de corte holgado confeccionada en algodón peinado")
     String descripcion,
 
-    @Schema(description = "Precio unitario", example = "2.50")
+    @Schema(description = "Tallas disponibles del producto", example = "XS, S, M, L, XL")
+    String talla,
+
+    @Schema(description = "Precio base/referencial (mínimo disponible entre las tiendas activas)", example = "24.99")
     BigDecimal precio,
 
-    @Schema(description = "Cantidad disponible en stock", example = "45")
+    @Schema(description = "Precio mínimo entre las sucursales donde se vende", example = "24.99")
+    BigDecimal precioMin,
+
+    @Schema(description = "Precio máximo entre las sucursales donde se vende", example = "29.99")
+    BigDecimal precioMax,
+
+    @Schema(description = "Cantidad de existencias totales sumadas de todas las sucursales", example = "45")
     int stock,
 
-    @Schema(description = "Estado de disponibilidad para clientes", example = "true")
+    @Schema(description = "Total acumulado de stock en todas las sucursales", example = "45")
+    int stockTotal,
+
+    @Schema(description = "Estado de publicación general para clientes", example = "true")
     boolean activo,
 
-    @Schema(description = "Lista de imágenes asociadas a la publicación (mínimo recomendado: 3)", example = "[]")
+    @Schema(description = "Lista de imágenes asociadas a la ficha del producto", example = "[]")
     List<ProductoImagenResponse> imagenes,
+
+    @Schema(description = "Sucursales donde el producto se encuentra disponible con su precio y stock particular", example = "[]")
+    List<TiendaInventarioResponse> tiendas,
 
     @Schema(description = "Fecha de creación ISO-8601", example = "2026-10-28T20:00:00Z")
     String creadoEn,

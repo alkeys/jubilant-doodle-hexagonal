@@ -22,4 +22,8 @@ public record ProductoImagen(
     public ProductoImagen(String url, boolean esPrincipal, int orden) {
         this(null, url, esPrincipal, orden, Instant.now());
     }
+
+    public ProductoImagen withPrincipal(boolean nuevaPrincipal) {
+        return new ProductoImagen(this.id, this.url, nuevaPrincipal, this.orden, this.creadoEn);
+    }
 }

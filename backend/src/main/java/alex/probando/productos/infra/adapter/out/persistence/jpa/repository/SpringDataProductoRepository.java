@@ -14,7 +14,10 @@ import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.Producto
 public interface SpringDataProductoRepository extends JpaRepository<ProductoEntity, UUID> {
     List<ProductoEntity> findByActivoTrue();
     Page<ProductoEntity> findByActivoTrueOrderByCreadoEnDesc(Pageable pageable);
-    List<ProductoEntity> findByTiendaId(UUID tiendaId);
+
+    @Query("SELECT DISTINCT p FROM ProductoEntity p JOIN p.inventarios i WHERE i.tienda.id = :tiendaId AND i.activo = true AND p.activo = true")
+    List<ProductoEntity> findByTiendaId(@Param("tiendaId") UUID tiendaId);
+
     List<ProductoEntity> findByCategoriaId(UUID categoriaId);
 
     @Query("SELECT p FROM ProductoEntity p WHERE LOWER(p.nombre) LIKE LOWER(CONCAT('%', :query, '%'))")

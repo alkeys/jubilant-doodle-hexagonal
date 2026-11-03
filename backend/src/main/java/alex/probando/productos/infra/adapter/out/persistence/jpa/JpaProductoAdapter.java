@@ -10,11 +10,16 @@ import org.springframework.stereotype.Component;
 import alex.probando.productos.application.port.out.ProductoRepositoryPort;
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.ProductoEntity;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.ProductoImagenEntity;
+import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.TiendaProductoEntity;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.mapper.ProductoJpaMapper;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.repository.SpringDataProductoImagenRepository;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.repository.SpringDataProductoRepository;
+import alex.probando.productos.infra.adapter.out.persistence.jpa.repository.SpringDataTiendaProductoRepository;
+import alex.probando.tiendas.infra.adapter.out.persistence.jpa.entity.TiendaEntity;
+import alex.probando.tiendas.infra.adapter.out.persistence.jpa.repository.SpringDataTiendaRepository;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -23,6 +28,8 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
 
     private final SpringDataProductoRepository productoRepository;
     private final SpringDataProductoImagenRepository imagenRepository;
+    private final SpringDataTiendaProductoRepository tiendaProductoRepository;
+    private final SpringDataTiendaRepository tiendaRepository;
     private final ProductoJpaMapper mapper;
 
     @Override
@@ -111,5 +118,44 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
     @Override
     public Optional<ProductoImagen> findImagenById(UUID imagenId) {
         return imagenRepository.findById(imagenId).map(mapper::toDomain);
+    }
+
+    @Override
+    public TiendaProducto saveInventario(UUID productoId, TiendaProducto inventario) {
+        ProductoEntity productoEntity = productoRepository.findById(productoId)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
+        TiendaEntity tiendaEntity = tiendaRepository.findById(inventario.tiendaId())
+                .orElseThrow(() -> new RuntimeException("Tienda no encontrada con ID: " + inventario.tiendaId()));
+
+        Optional<TiendaProductoEntity> existente = tiendaProductoRepository
+                .findByProductoIdAndTiendaId(productoId, inventario.tiendaId());
+
+        TiendaProductoEntity entity;
+        if (existente.isPresent()) {
+            entity = existente.get();
+            entity.setPrecio(inventario.precio());
+            entity.setStock(inventario.stock());
+            entity.setActivo(inventario.activo());
+            entity.setActualizadoEn(java.time.Instant.now());
+        } else {
+            entity = mapper.toEntity(inventario, productoEntity, tiendaEntity);
+            if (productoEntity.getInventarios() != null) {
+                productoEntity.getInventarios().add(entity);
+            }
+        }
+
+        TiendaProductoEntity guardado = tiendaProductoRepository.save(entity);
+        return mapper.toDomain(guardado);
+    }
+
+    @Override
+    public void deleteInventario(UUID productoId, UUID tiendaId) {
+        tiendaProductoRepository.deleteByProductoIdAndTiendaId(productoId, tiendaId);
+    }
+
+    @Override
+    public Optional<TiendaProducto> findInventario(UUID productoId, UUID tiendaId) {
+        return tiendaProductoRepository.findByProductoIdAndTiendaId(productoId, tiendaId)
+                .map(mapper::toDomain);
     }
 }

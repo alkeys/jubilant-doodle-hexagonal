@@ -24,13 +24,16 @@ public class ProductoUpdateRequest {
     @Schema(description = "ID de la categoría asignada", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
     private UUID categoriaId;
 
-    @Schema(description = "Nombre del producto", example = "Croissant de Mantequilla Especial")
+    @Schema(description = "Nombre del producto", example = "Camiseta Oversize Algodón Premium")
     private String nombre;
 
-    @Schema(description = "Descripción detallada del producto", example = "Croissant francés horneado a diario con mantequilla extra")
+    @Schema(description = "Descripción detallada del producto", example = "Playera de corte holgado confeccionada en algodón peinado")
     private String descripcion;
 
-    @Schema(description = "Precio del producto", example = "2.75")
+    @Schema(description = "Tallas disponibles del producto (ej: XS, S, M, L, XL o 25, 26, 27)", example = "S, M, L, XL")
+    private String talla;
+
+    @Schema(description = "Precio del producto", example = "24.99")
     @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private BigDecimal precio;
 

@@ -3,36 +3,27 @@ package alex.probando.productos.domain;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public record Producto(
         UUID id,
-        UUID tiendaId,
         UUID categoriaId,
         String nombre,
         String descripcion,
-        BigDecimal precio,
-        int stock,
+        String talla,
         boolean activo,
         Instant creadoEn,
         Instant actualizadoEn,
-        List<ProductoImagen> imagenes) {
+        List<ProductoImagen> imagenes,
+        List<TiendaProducto> inventarios) {
 
     public Producto {
         if (nombre == null || nombre.isBlank()) {
             throw new IllegalArgumentException("El nombre del producto no puede ser nulo o vacío");
         }
-        if (tiendaId == null) {
-            throw new IllegalArgumentException("El producto debe pertenecer a una sucursal/tienda");
-        }
         if (categoriaId == null) {
             throw new IllegalArgumentException("El producto debe tener una categoría asignada");
-        }
-        if (precio == null || precio.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("El precio del producto debe ser mayor o igual a 0");
-        }
-        if (stock < 0) {
-            throw new IllegalArgumentException("El stock no puede ser negativo");
         }
         if (creadoEn == null) {
             creadoEn = Instant.now();
@@ -41,48 +32,85 @@ public record Producto(
             actualizadoEn = Instant.now();
         }
         imagenes = imagenes != null ? List.copyOf(imagenes) : List.of();
+        inventarios = inventarios != null ? List.copyOf(inventarios) : List.of();
     }
 
     public Producto(
-            UUID tiendaId,
+            UUID id,
             UUID categoriaId,
             String nombre,
             String descripcion,
-            BigDecimal precio,
-            int stock) {
-        this(null, tiendaId, categoriaId, nombre, descripcion, precio, stock, true, Instant.now(), Instant.now(),
-                List.of());
+            boolean activo,
+            Instant creadoEn,
+            Instant actualizadoEn,
+            List<ProductoImagen> imagenes,
+            List<TiendaProducto> inventarios) {
+        this(id, categoriaId, nombre, descripcion, null, activo, creadoEn, actualizadoEn, imagenes, inventarios);
     }
 
-    // esta funcion se utilizara para actualizar las imagenes del producto
+    public Producto(
+            UUID categoriaId,
+            String nombre,
+            String descripcion) {
+        this(null, categoriaId, nombre, descripcion, null, true, Instant.now(), Instant.now(),
+                List.of(), List.of());
+    }
+
+    public BigDecimal precioMinimo() {
+        return inventarios.stream()
+                .filter(TiendaProducto::activo)
+                .map(TiendaProducto::precio)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    public BigDecimal precioMaximo() {
+        return inventarios.stream()
+                .filter(TiendaProducto::activo)
+                .map(TiendaProducto::precio)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    public int stockTotal() {
+        return inventarios.stream()
+                .filter(TiendaProducto::activo)
+                .mapToInt(TiendaProducto::stock)
+                .sum();
+    }
+
+    public Optional<TiendaProducto> obtenerInventario(UUID tiendaId) {
+        if (tiendaId == null) return Optional.empty();
+        return inventarios.stream()
+                .filter(i -> tiendaId.equals(i.tiendaId()))
+                .findFirst();
+    }
+
     public Producto withImagenes(List<ProductoImagen> nuevasImagenes) {
         return new Producto(
                 this.id,
-                this.tiendaId,
                 this.categoriaId,
                 this.nombre,
                 this.descripcion,
-                this.precio,
-                this.stock,
+                this.talla,
                 this.activo,
                 this.creadoEn,
                 Instant.now(),
-                nuevasImagenes);
+                nuevasImagenes,
+                this.inventarios);
     }
 
-    // esta funcion se utilizara para actualizar el stock del producto
-    public Producto withStock(int nuevoStock) {
+    public Producto withInventarios(List<TiendaProducto> nuevosInventarios) {
         return new Producto(
                 this.id,
-                this.tiendaId,
                 this.categoriaId,
                 this.nombre,
                 this.descripcion,
-                this.precio,
-                nuevoStock,
+                this.talla,
                 this.activo,
                 this.creadoEn,
                 Instant.now(),
-                this.imagenes);
+                this.imagenes,
+                nuevosInventarios);
     }
 }

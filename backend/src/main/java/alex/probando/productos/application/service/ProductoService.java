@@ -17,10 +17,12 @@ import alex.probando.productos.application.port.in.GetProductoByIdUseCase;
 import alex.probando.productos.application.port.in.GetProductosPrincipalesUseCase;
 import alex.probando.productos.application.port.in.ListProductosUseCase;
 import alex.probando.productos.application.port.in.ManageProductoImagenesUseCase;
+import alex.probando.productos.application.port.in.ManageProductoInventarioUseCase;
 import alex.probando.productos.application.port.in.UpdateProductoUseCase;
 import alex.probando.productos.application.port.out.ProductoRepositoryPort;
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.shared.exception.ResourceNotFoundException;
 import alex.probando.shared.storage.port.FileStoragePort;
 import alex.probando.tiendas.application.port.out.TiendaRepositoryPort;
@@ -36,7 +38,8 @@ public class ProductoService implements
         GetProductosPrincipalesUseCase,
         UpdateProductoUseCase,
         DeleteProductoUseCase,
-        ManageProductoImagenesUseCase {
+        ManageProductoImagenesUseCase,
+        ManageProductoInventarioUseCase {
 
     private final ProductoRepositoryPort productoRepositoryPort;
     private final TiendaRepositoryPort tiendaRepositoryPort;
@@ -44,7 +47,7 @@ public class ProductoService implements
     private final FileStoragePort fileStoragePort;
 
     private static final int DEFAULT_LIMITE_PAGINA = 10;
-    private static final int MAX_LIMITE_PAGINA = 50; // Límite máximo para proteger la base de datos
+    private static final int MAX_LIMITE_PAGINA = 50;
 
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
             "image/jpeg",
@@ -59,14 +62,18 @@ public class ProductoService implements
             throw new IllegalArgumentException("El producto no puede ser nulo");
         }
 
-        // Validar existencia de la tienda / sucursal
-        if (tiendaRepositoryPort.findById(producto.tiendaId()).isEmpty()) {
-            throw new ResourceNotFoundException("La sucursal indicada no existe con ID: " + producto.tiendaId());
-        }
-
         // Validar existencia de la categoría
         if (categoriaRepositoryPort.findById(producto.categoriaId()).isEmpty()) {
             throw new ResourceNotFoundException("La categoría indicada no existe con ID: " + producto.categoriaId());
+        }
+
+        // Validar sucursales de inventario inicial si se proporcionan
+        if (producto.inventarios() != null) {
+            for (TiendaProducto inv : producto.inventarios()) {
+                if (tiendaRepositoryPort.findById(inv.tiendaId()).isEmpty()) {
+                    throw new ResourceNotFoundException("La sucursal indicada no existe con ID: " + inv.tiendaId());
+                }
+            }
         }
 
         return productoRepositoryPort.save(producto);
@@ -87,7 +94,7 @@ public class ProductoService implements
                 : productoRepositoryPort.findAllActivos();
 
         return lista.stream()
-                .filter(p -> tiendaId == null || p.tiendaId().equals(tiendaId))
+                .filter(p -> tiendaId == null || p.inventarios().stream().anyMatch(i -> i.tiendaId().equals(tiendaId) && i.activo()))
                 .filter(p -> categoriaId == null || p.categoriaId().equals(categoriaId))
                 .filter(p -> buscar == null || buscar.isBlank() 
                         || p.nombre().toLowerCase().contains(buscar.toLowerCase().trim())
@@ -98,7 +105,6 @@ public class ProductoService implements
     @Override
     @Transactional(readOnly = true)
     public List<Producto> getProductosPrincipales(int pagina, int limite) {
-        // Protección contra desbordamiento y saturación de la base de datos
         if (pagina < 0) {
             pagina = 0;
         }
@@ -115,12 +121,6 @@ public class ProductoService implements
     public Producto updateProducto(UUID id, Producto actualizado) {
         Producto existente = getProductoById(id);
 
-        if (actualizado.tiendaId() != null && !actualizado.tiendaId().equals(existente.tiendaId())) {
-            if (tiendaRepositoryPort.findById(actualizado.tiendaId()).isEmpty()) {
-                throw new ResourceNotFoundException("La sucursal indicada no existe con ID: " + actualizado.tiendaId());
-            }
-        }
-
         if (actualizado.categoriaId() != null && !actualizado.categoriaId().equals(existente.categoriaId())) {
             if (categoriaRepositoryPort.findById(actualizado.categoriaId()).isEmpty()) {
                 throw new ResourceNotFoundException("La categoría indicada no existe con ID: " + actualizado.categoriaId());
@@ -129,16 +129,15 @@ public class ProductoService implements
 
         Producto nuevo = new Producto(
                 existente.id(),
-                actualizado.tiendaId() != null ? actualizado.tiendaId() : existente.tiendaId(),
                 actualizado.categoriaId() != null ? actualizado.categoriaId() : existente.categoriaId(),
                 actualizado.nombre() != null && !actualizado.nombre().isBlank() ? actualizado.nombre() : existente.nombre(),
                 actualizado.descripcion() != null ? actualizado.descripcion() : existente.descripcion(),
-                actualizado.precio() != null ? actualizado.precio() : existente.precio(),
-                actualizado.stock() >= 0 ? actualizado.stock() : existente.stock(),
+                actualizado.talla() != null ? actualizado.talla() : existente.talla(),
                 actualizado.activo(),
                 existente.creadoEn(),
                 Instant.now(),
-                existente.imagenes()
+                existente.imagenes(),
+                existente.inventarios()
         );
 
         return productoRepositoryPort.save(nuevo);
@@ -148,12 +147,30 @@ public class ProductoService implements
     public void deleteProducto(UUID id) {
         Producto existente = getProductoById(id);
         
-        // Eliminar archivos físicos asociados
         for (ProductoImagen img : existente.imagenes()) {
             fileStoragePort.deleteFile(img.url());
         }
 
         productoRepositoryPort.deleteById(id);
+    }
+
+    @Override
+    public TiendaProducto asignarOActualizarInventario(UUID productoId, TiendaProducto inventario) {
+        if (inventario == null) {
+            throw new IllegalArgumentException("El inventario no puede ser nulo");
+        }
+        getProductoById(productoId);
+        if (tiendaRepositoryPort.findById(inventario.tiendaId()).isEmpty()) {
+            throw new ResourceNotFoundException("La sucursal indicada no existe con ID: " + inventario.tiendaId());
+        }
+
+        return productoRepositoryPort.saveInventario(productoId, inventario);
+    }
+
+    @Override
+    public void eliminarInventarioDeTienda(UUID productoId, UUID tiendaId) {
+        getProductoById(productoId);
+        productoRepositoryPort.deleteInventario(productoId, tiendaId);
     }
 
     @Override
@@ -163,74 +180,89 @@ public class ProductoService implements
         }
 
         Producto producto = getProductoById(productoId);
-        List<ProductoImagen> nuevasImagenes = new ArrayList<>();
 
-        int ordenInicio = producto.imagenes().size();
-        boolean yaTienePrincipal = producto.imagenes().stream().anyMatch(ProductoImagen::esPrincipal);
-
-        for (int i = 0; i < files.size(); i++) {
-            MultipartFile file = files.get(i);
+        for (MultipartFile file : files) {
             if (file.isEmpty()) {
-                continue;
+                throw new IllegalArgumentException("Uno de los archivos subidos se encuentra vacío");
             }
-
             String contentType = file.getContentType();
             if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
-                throw new IllegalArgumentException("Formato no soportado para " + file.getOriginalFilename() + ". Solo se admiten JPEG, PNG y WEBP");
+                throw new IllegalArgumentException("Formato no soportado: " + contentType + ". Formatos válidos: JPEG, PNG, WEBP");
             }
+        }
 
-            String urlPublica = fileStoragePort.storeFile(file, "productos");
-            boolean esPrincipal = (!yaTienePrincipal && i == 0);
-            if (esPrincipal) {
-                yaTienePrincipal = true;
-            }
+        int siguienteOrden = producto.imagenes().stream()
+                .mapToInt(ProductoImagen::orden)
+                .max()
+                .orElse(0) + 1;
 
-            ProductoImagen imagen = new ProductoImagen(
+        boolean yaTienePrincipal = producto.imagenes().stream()
+                .anyMatch(ProductoImagen::esPrincipal);
+
+        List<ProductoImagen> subidas = new ArrayList<>();
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile file = files.get(i);
+            String url = fileStoragePort.storeFile(file, "productos/" + productoId);
+
+            boolean principal = !yaTienePrincipal && (i == 0);
+            ProductoImagen nuevaImagen = new ProductoImagen(
                     null,
-                    urlPublica,
-                    esPrincipal,
-                    ordenInicio + i,
+                    url,
+                    principal,
+                    siguienteOrden + i,
                     Instant.now()
             );
 
-            ProductoImagen guardada = productoRepositoryPort.saveImagen(productoId, imagen);
-            nuevasImagenes.add(guardada != null ? guardada : imagen);
+            ProductoImagen guardada = productoRepositoryPort.saveImagen(productoId, nuevaImagen);
+            subidas.add(guardada);
         }
 
-        return nuevasImagenes;
+        return subidas;
     }
 
     @Override
     public void deleteImagen(UUID productoId, UUID imagenId) {
         Producto producto = getProductoById(productoId);
+
         ProductoImagen imagen = producto.imagenes().stream()
-                .filter(img -> img.id().equals(imagenId))
+                .filter(img -> imagenId.equals(img.id()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Imagen no encontrada con ID: " + imagenId));
 
         fileStoragePort.deleteFile(imagen.url());
         productoRepositoryPort.deleteImagen(productoId, imagenId);
+
+        if (imagen.esPrincipal()) {
+            List<ProductoImagen> restantes = producto.imagenes().stream()
+                    .filter(img -> !imagenId.equals(img.id()))
+                    .collect(Collectors.toList());
+
+            if (!restantes.isEmpty()) {
+                ProductoImagen nuevaPrincipal = restantes.get(0).withPrincipal(true);
+                productoRepositoryPort.saveImagen(productoId, nuevaPrincipal);
+            }
+        }
     }
 
     @Override
     public Producto setImagenPrincipal(UUID productoId, UUID imagenId) {
         Producto producto = getProductoById(productoId);
-        boolean existe = producto.imagenes().stream().anyMatch(img -> img.id().equals(imagenId));
+
+        boolean existe = producto.imagenes().stream()
+                .anyMatch(img -> imagenId.equals(img.id()));
+
         if (!existe) {
-            throw new ResourceNotFoundException("La imagen " + imagenId + " no pertenece al producto " + productoId);
+            throw new ResourceNotFoundException("Imagen no encontrada con ID: " + imagenId);
         }
 
-        List<ProductoImagen> actualizadas = producto.imagenes().stream()
-                .map(img -> new ProductoImagen(
-                        img.id(),
-                        img.url(),
-                        img.id().equals(imagenId), // Solo la seleccionada es true
-                        img.orden(),
-                        img.creadoEn()
-                ))
-                .collect(Collectors.toList());
+        for (ProductoImagen img : producto.imagenes()) {
+            boolean esEsta = imagenId.equals(img.id());
+            if (img.esPrincipal() != esEsta) {
+                ProductoImagen actualizada = img.withPrincipal(esEsta);
+                productoRepositoryPort.saveImagen(productoId, actualizada);
+            }
+        }
 
-        Producto conPrincipalActualizada = producto.withImagenes(actualizadas);
-        return productoRepositoryPort.save(conPrincipalActualizada);
+        return getProductoById(productoId);
     }
 }

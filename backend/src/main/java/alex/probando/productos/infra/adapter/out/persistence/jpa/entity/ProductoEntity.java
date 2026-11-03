@@ -1,6 +1,5 @@
 package alex.probando.productos.infra.adapter.out.persistence.jpa.entity;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,9 +31,6 @@ public class ProductoEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "tienda_id", nullable = false)
-    private UUID tiendaId;
-
     @Column(name = "categoria_id", nullable = false)
     private UUID categoriaId;
 
@@ -44,14 +40,8 @@ public class ProductoEntity {
     @Column(name = "descripcion", columnDefinition = "TEXT")
     private String descripcion;
 
-    @Column(name = "precio", nullable = false, precision = 10, scale = 2)
-    private BigDecimal precio;
-
-    @Column(name = "stock", nullable = false)
-    private int stock = 0;
-
-    @Column(name = "imagen_url", length = 508)
-    private String imagenUrl;
+    @Column(name = "talla", length = 100)
+    private String talla;
 
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
@@ -65,4 +55,7 @@ public class ProductoEntity {
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orden ASC, creadoEn ASC")
     private List<ProductoImagenEntity> imagenes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TiendaProductoEntity> inventarios = new ArrayList<>();
 }

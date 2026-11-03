@@ -8,8 +8,11 @@ import org.springframework.stereotype.Component;
 
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.ProductoEntity;
 import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.ProductoImagenEntity;
+import alex.probando.productos.infra.adapter.out.persistence.jpa.entity.TiendaProductoEntity;
+import alex.probando.tiendas.infra.adapter.out.persistence.jpa.entity.TiendaEntity;
 
 @Component
 public class ProductoJpaMapper {
@@ -21,12 +24,10 @@ public class ProductoJpaMapper {
 
         ProductoEntity entity = new ProductoEntity();
         entity.setId(domain.id());
-        entity.setTiendaId(domain.tiendaId());
         entity.setCategoriaId(domain.categoriaId());
         entity.setNombre(domain.nombre());
         entity.setDescripcion(domain.descripcion());
-        entity.setPrecio(domain.precio());
-        entity.setStock(domain.stock());
+        entity.setTalla(domain.talla());
         entity.setActivo(domain.activo());
         if (domain.creadoEn() != null) {
             entity.setCreadoEn(domain.creadoEn());
@@ -43,13 +44,21 @@ public class ProductoJpaMapper {
                 imagenEntities.add(imgEntity);
             }
             entity.setImagenes(imagenEntities);
+        }
 
-            // Mantener imagenUrl de V1 sincronizada con la principal o primera
-            domain.imagenes().stream()
-                    .filter(ProductoImagen::esPrincipal)
-                    .findFirst()
-                    .or(() -> domain.imagenes().stream().findFirst())
-                    .ifPresent(p -> entity.setImagenUrl(p.url()));
+        if (domain.inventarios() != null && !domain.inventarios().isEmpty()) {
+            List<TiendaProductoEntity> inventarioEntities = new ArrayList<>();
+            for (TiendaProducto inv : domain.inventarios()) {
+                TiendaEntity tiendaRef = new TiendaEntity();
+                tiendaRef.setId(inv.tiendaId());
+                if (inv.tiendaNombre() != null) {
+                    tiendaRef.setNombre(inv.tiendaNombre());
+                }
+
+                TiendaProductoEntity invEntity = toEntity(inv, entity, tiendaRef);
+                inventarioEntities.add(invEntity);
+            }
+            entity.setInventarios(inventarioEntities);
         }
 
         return entity;
@@ -64,19 +73,21 @@ public class ProductoJpaMapper {
                 ? entity.getImagenes().stream().map(this::toDomain).collect(Collectors.toList())
                 : List.of();
 
+        List<TiendaProducto> inventarios = entity.getInventarios() != null
+                ? entity.getInventarios().stream().map(this::toDomain).collect(Collectors.toList())
+                : List.of();
+
         return new Producto(
                 entity.getId(),
-                entity.getTiendaId(),
                 entity.getCategoriaId(),
                 entity.getNombre(),
                 entity.getDescripcion(),
-                entity.getPrecio(),
-                entity.getStock(),
+                entity.getTalla(),
                 entity.isActivo(),
                 entity.getCreadoEn(),
                 entity.getActualizadoEn(),
-                imagenes
-        );
+                imagenes,
+                inventarios);
     }
 
     public ProductoImagenEntity toEntity(ProductoImagen domain) {
@@ -103,7 +114,44 @@ public class ProductoJpaMapper {
                 entity.getUrl(),
                 entity.isEsPrincipal(),
                 entity.getOrden(),
-                entity.getCreadoEn()
-        );
+                entity.getCreadoEn());
+    }
+
+    public TiendaProductoEntity toEntity(TiendaProducto domain, ProductoEntity producto, TiendaEntity tienda) {
+        if (domain == null) {
+            return null;
+        }
+        TiendaProductoEntity entity = new TiendaProductoEntity();
+        entity.setId(domain.id());
+        entity.setProducto(producto);
+        entity.setTienda(tienda);
+        entity.setPrecio(domain.precio());
+        entity.setStock(domain.stock());
+        entity.setActivo(domain.activo());
+        if (domain.creadoEn() != null) {
+            entity.setCreadoEn(domain.creadoEn());
+        }
+        if (domain.actualizadoEn() != null) {
+            entity.setActualizadoEn(domain.actualizadoEn());
+        }
+        return entity;
+    }
+
+    public TiendaProducto toDomain(TiendaProductoEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        String tiendaNombre = entity.getTienda() != null ? entity.getTienda().getNombre() : null;
+        java.util.UUID tiendaId = entity.getTienda() != null ? entity.getTienda().getId() : null;
+
+        return new TiendaProducto(
+                entity.getId(),
+                tiendaId,
+                tiendaNombre,
+                entity.getPrecio(),
+                entity.getStock(),
+                entity.isActivo(),
+                entity.getCreadoEn(),
+                entity.getActualizadoEn());
     }
 }

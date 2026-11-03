@@ -1,6 +1,6 @@
 package alex.probando.productos.infra.adapter.in.web;
 
-import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -27,14 +26,18 @@ import alex.probando.productos.application.port.in.GetProductoByIdUseCase;
 import alex.probando.productos.application.port.in.GetProductosPrincipalesUseCase;
 import alex.probando.productos.application.port.in.ListProductosUseCase;
 import alex.probando.productos.application.port.in.ManageProductoImagenesUseCase;
+import alex.probando.productos.application.port.in.ManageProductoInventarioUseCase;
 import alex.probando.productos.application.port.in.UpdateProductoUseCase;
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 import alex.probando.productos.infra.adapter.in.web.dto.ProductoImagenResponse;
 import alex.probando.productos.infra.adapter.in.web.dto.ProductoMapper;
 import alex.probando.productos.infra.adapter.in.web.dto.ProductoRequest;
 import alex.probando.productos.infra.adapter.in.web.dto.ProductoResponse;
 import alex.probando.productos.infra.adapter.in.web.dto.ProductoUpdateRequest;
+import alex.probando.productos.infra.adapter.in.web.dto.TiendaInventarioRequest;
+import alex.probando.productos.infra.adapter.in.web.dto.TiendaInventarioResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,7 +47,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/productos")
 @RequiredArgsConstructor
-@Tag(name = "Productos", description = "Gestión del catálogo de productos y subida de imágenes para la tienda comercial")
+@Tag(name = "Productos", description = "Gestión del catálogo de productos, inventario por tienda y subida de imágenes")
 public class ProductoController {
 
     private final CreateProductoUseCase createProductoUseCase;
@@ -54,6 +57,7 @@ public class ProductoController {
     private final UpdateProductoUseCase updateProductoUseCase;
     private final DeleteProductoUseCase deleteProductoUseCase;
     private final ManageProductoImagenesUseCase manageProductoImagenesUseCase;
+    private final ManageProductoInventarioUseCase manageProductoInventarioUseCase;
 
     @Operation(
         summary = "Listar catálogo de productos",
@@ -73,8 +77,7 @@ public class ProductoController {
 
     @Operation(
         summary = "Obtener productos principales del catálogo (Portada)",
-        description = "Consulta pública paginada para la portada de la tienda. " +
-                      "Aplica un rango controlado para no sobrecargar la base de datos (límite máximo permitido: 50 productos)."
+        description = "Consulta pública paginada para la portada de la tienda. Retorna productos únicos consolidados con disponibilidad en tiendas."
     )
     @GetMapping("/principales")
     public List<ProductoResponse> getProductosPrincipales(
@@ -88,7 +91,7 @@ public class ProductoController {
                 .collect(Collectors.toList());
     }
 
-    @Operation(summary = "Obtener producto por ID", description = "Consulta pública del detalle de un producto y todas sus imágenes asociadas")
+    @Operation(summary = "Obtener producto por ID", description = "Consulta pública del detalle de un producto, sus imágenes y su disponibilidad por sucursal")
     @GetMapping("/{id}")
     public ProductoResponse getProductoById(@PathVariable UUID id) {
         Producto producto = getProductoByIdUseCase.getProductoById(id);
@@ -97,8 +100,7 @@ public class ProductoController {
 
     @Operation(
         summary = "Crear nuevo producto (Solo ADMIN)",
-        description = "Da de alta la publicación de un producto en el catálogo asignándolo a una sucursal y categoría. " +
-                      "Retorna el producto creado con su identificador único (id), el cual se utiliza como ID de la publicación para adjuntarle fotos en POST /{id}/imagenes."
+        description = "Da de alta la publicación de un producto en el catálogo asignándolo opcionalmente a una sucursal inicial con su precio y stock."
     )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -108,28 +110,25 @@ public class ProductoController {
         return ProductoMapper.toResponse(creado);
     }
 
-    @Operation(summary = "Actualizar producto (Solo ADMIN)", description = "Modifica los datos generales, precio o stock de un producto existente")
+    @Operation(summary = "Actualizar datos generales del producto (Solo ADMIN)", description = "Modifica los datos del catálogo general (nombre, descripción, categoría, estado)")
     @PutMapping("/{id}")
     public ProductoResponse updateProducto(
-            @Parameter(description = "ID único (UUID) de la publicación del producto", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            @Parameter(description = "ID único (UUID) del producto", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
             @PathVariable UUID id,
             @RequestBody @Valid ProductoUpdateRequest request
     ) {
         boolean activo = request.getActivo() == null ? true : request.getActivo();
-        BigDecimal precio = request.getPrecio() != null ? request.getPrecio() : BigDecimal.ZERO;
-        int stock = request.getStock() != null ? request.getStock() : 0;
 
         Producto actualizado = new Producto(
                 id,
-                request.getTiendaId(),
                 request.getCategoriaId(),
                 request.getNombre(),
                 request.getDescripcion(),
-                precio,
-                stock,
+                request.getTalla(),
                 activo,
                 null,
                 null,
+                List.of(),
                 List.of()
         );
 
@@ -137,28 +136,52 @@ public class ProductoController {
         return ProductoMapper.toResponse(resultado);
     }
 
-    @Operation(summary = "Eliminar producto (Solo ADMIN)", description = "Elimina la publicación del producto y todas sus imágenes físicas del servidor")
+    @Operation(summary = "Eliminar producto (Solo ADMIN)", description = "Elimina el producto del catálogo, sus inventarios en sucursales y sus imágenes")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteProducto(
-            @Parameter(description = "ID único (UUID) de la publicación del producto", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-            @PathVariable UUID id
-    ) {
+    public void deleteProducto(@PathVariable UUID id) {
         deleteProductoUseCase.deleteProducto(id);
     }
 
+    @Operation(summary = "Asignar o actualizar precio y stock en una sucursal (Solo ADMIN)", description = "Define el precio y existencias del producto para una tienda específica")
+    @PostMapping("/{id}/tiendas")
+    public TiendaInventarioResponse asignarInventario(
+            @PathVariable UUID id,
+            @RequestBody @Valid TiendaInventarioRequest request
+    ) {
+        boolean activo = request.getActivo() == null ? true : request.getActivo();
+        TiendaProducto inventario = new TiendaProducto(
+                null,
+                request.getTiendaId(),
+                null,
+                request.getPrecio(),
+                request.getStock(),
+                activo,
+                Instant.now(),
+                Instant.now()
+        );
+        TiendaProducto guardado = manageProductoInventarioUseCase.asignarOActualizarInventario(id, inventario);
+        return ProductoMapper.toResponse(guardado);
+    }
+
+    @Operation(summary = "Remover producto de una sucursal (Solo ADMIN)", description = "Quita el producto del inventario de una tienda específica")
+    @DeleteMapping("/{id}/tiendas/{tiendaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarInventario(
+            @PathVariable UUID id,
+            @PathVariable UUID tiendaId
+    ) {
+        manageProductoInventarioUseCase.eliminarInventarioDeTienda(id, tiendaId);
+    }
+
     @Operation(
-        summary = "Subir imágenes para la publicación del producto (Solo ADMIN)",
-        description = "Permite subir múltiples fotos para la publicación (mínimo recomendado: 3 imágenes). " +
-                      "El parámetro '{id}' en la URL es el identificador (UUID) de la publicación del producto al que pertenecen estas fotos. " +
-                      "Formatos admitidos: JPEG, PNG, WEBP."
+        summary = "Subir imágenes para un producto (Solo ADMIN)",
+        description = "Sube 1 o más fotos al producto. Formatos admitidos: JPEG, PNG, WEBP."
     )
     @PostMapping(value = "/{id}/imagenes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public List<ProductoImagenResponse> uploadImagenes(
-            @Parameter(description = "ID único (UUID) de la publicación del producto donde se adjuntarán las fotos", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
             @PathVariable UUID id,
-            @Parameter(description = "Lista de archivos de fotos a subir")
             @RequestPart("imagenes") List<MultipartFile> files
     ) {
         List<ProductoImagen> subidas = manageProductoImagenesUseCase.uploadImagenes(id, files);
@@ -167,26 +190,16 @@ public class ProductoController {
                 .collect(Collectors.toList());
     }
 
-    @Operation(summary = "Eliminar una imagen de un producto (Solo ADMIN)", description = "Elimina la foto seleccionada de la publicación y remueve el archivo físico del disco")
+    @Operation(summary = "Eliminar una imagen de un producto (Solo ADMIN)", description = "Elimina una foto específica del producto y su archivo en el almacenamiento")
     @DeleteMapping("/{id}/imagenes/{imagenId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteImagen(
-            @Parameter(description = "ID único (UUID) de la publicación del producto", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-            @PathVariable UUID id,
-            @Parameter(description = "ID único (UUID) de la imagen a eliminar", example = "4ba85f64-5717-4562-b3fc-2c963f66afa7")
-            @PathVariable UUID imagenId
-    ) {
+    public void deleteImagen(@PathVariable UUID id, @PathVariable UUID imagenId) {
         manageProductoImagenesUseCase.deleteImagen(id, imagenId);
     }
 
-    @Operation(summary = "Establecer imagen como principal (Solo ADMIN)", description = "Configura cuál de las fotos asociadas a la publicación será la portada o foto principal")
-    @PatchMapping("/{id}/imagenes/{imagenId}/principal")
-    public ProductoResponse setImagenPrincipal(
-            @Parameter(description = "ID único (UUID) de la publicación del producto", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-            @PathVariable UUID id,
-            @Parameter(description = "ID único (UUID) de la imagen que será la nueva portada", example = "4ba85f64-5717-4562-b3fc-2c963f66afa7")
-            @PathVariable UUID imagenId
-    ) {
+    @Operation(summary = "Marcar una imagen como principal (Solo ADMIN)", description = "Define cuál imagen será la portada destacada del producto")
+    @PutMapping("/{id}/imagenes/{imagenId}/principal")
+    public ProductoResponse setPrincipalImagen(@PathVariable UUID id, @PathVariable UUID imagenId) {
         Producto producto = manageProductoImagenesUseCase.setImagenPrincipal(id, imagenId);
         return ProductoMapper.toResponse(producto);
     }

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import alex.probando.productos.domain.Producto;
 import alex.probando.productos.domain.ProductoImagen;
+import alex.probando.productos.domain.TiendaProducto;
 
 public interface ProductoRepositoryPort {
     Producto save(Producto producto);
@@ -21,4 +22,8 @@ public interface ProductoRepositoryPort {
     ProductoImagen saveImagen(UUID productoId, ProductoImagen imagen);
     void deleteImagen(UUID productoId, UUID imagenId);
     Optional<ProductoImagen> findImagenById(UUID imagenId);
+
+    TiendaProducto saveInventario(UUID productoId, TiendaProducto inventario);
+    void deleteInventario(UUID productoId, UUID tiendaId);
+    Optional<TiendaProducto> findInventario(UUID productoId, UUID tiendaId);
 }

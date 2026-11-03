@@ -28,14 +28,17 @@ public class ProductoRequest {
     @NotNull(message = "El ID de la categoría es obligatorio")
     private UUID categoriaId;
 
-    @Schema(description = "Nombre del producto", example = "Croissant de Mantequilla")
+    @Schema(description = "Nombre del producto", example = "Camiseta Oversize Algodón Premium")
     @NotBlank(message = "El nombre del producto es obligatorio")
     private String nombre;
 
-    @Schema(description = "Descripción detallada del producto", example = "Croissant francés horneado a diario")
+    @Schema(description = "Descripción detallada del producto", example = "Playera de corte holgado confeccionada en algodón peinado")
     private String descripcion;
 
-    @Schema(description = "Precio del producto (mínimo 0.00)", example = "2.50")
+    @Schema(description = "Tallas disponibles del producto (ej: XS, S, M, L, XL o 25, 26, 27)", example = "S, M, L, XL")
+    private String talla;
+
+    @Schema(description = "Precio del producto (mínimo 0.00)", example = "24.99")
     @NotNull(message = "El precio es obligatorio")
     @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private BigDecimal precio;
