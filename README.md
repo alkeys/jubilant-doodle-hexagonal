@@ -1,214 +1,248 @@
-# 🥖 Store Chain Management & AI Assistant Backend
+# 👗👟 Jubilant Doodle — Arquitectura Hexagonal & Vertical Slice (Noble Muse Store)
 
-Backend robusto desarrollado con **Spring Boot**, estructurado bajo **Arquitectura Hexagonal (Ports and Adapters)** y **Vertical Slice Architecture**. 
-
-Diseñado específicamente como el núcleo digital y operativo para **una sola marca / cadena de tiendas**, centralizando la gestión de sus sucursales, personal administrativo, catálogo de productos e inventario, con arquitectura preparada para incorporar un **Asistente Inteligente con Inteligencia Artificial (IA)**.
-
-El código de este proyecto es propietario. Consulta [LICENSE](LICENSE) para conocer las condiciones de uso.
+Sistema integral de gestión para cadena de tiendas de **Moda Urbana, Calzado, Sneakers y Accesorios** (Catálogo multi-sucursal con tallas, Inventario por tienda, Ventas, Usuarios y Autenticación), construido aplicando **Arquitectura Hexagonal (Ports & Adapters)** organizada en **Vertical Slices** en el backend y **Astro 7 SSR + TailwindCSS 4 (Tema Noble Muse)** en el frontend.
 
 ---
 
-## 🎯 Enfoque y Modelo de Negocio
+## 📁 Estructura del Repositorio (Monorepo)
 
-A diferencia de un marketplace abierto, esta plataforma está enfocada en el gobierno y operación de **una única empresa o cadena comercial**:
-* **Gobierno Centralizado:** Las tiendas del sistema representan las **sucursales físicas y puntos de venta** oficiales de la marca (ej. *Sucursal Centro*, *Sucursal Escalón*, etc.).
-* **Personal y Colaboradores:** Los usuarios administrativos (`ADMIN`, `RH`) son el personal interno de la empresa que gestiona sucursales, colaboradores y catálogo.
-* **Clientes:** Usuarios compradores que pueden consultar el catálogo público, ubicar sucursales, registrarse e interactuar con la tienda. **Los clientes no crean tiendas ni administran sucursales.**
+El proyecto está dividido en dos módulos independientes dentro del mismo repositorio:
+
+```text
+jubilant-doodle-hexagonal/
+├── backend/                  # API REST en Java 27 + Spring Boot 4.1.1 (Gradle)
+│   ├── src/main/java/        # Código fuente organizado por Vertical Slices + Hexagonal
+│   ├── src/main/resources/   # Configuración (application.yaml) y migraciones Flyway (V1..V8)
+│   ├── Dockerfile            # Construcción multi-stage para despliegue en contenedor
+│   └── build.gradle          # Dependencias y configuración de compilación
+│
+├── front/                    # Aplicación Web SSR en Astro 7 + TailwindCSS 4 + TypeScript
+│   ├── src/api/
+│   │   ├── client/           # Instancia base de Axios (BaseApi.ts)
+│   │   ├── services/         # Servicios completos por dominio (Productos, Categorias, Tiendas, Auth, Ventas, Usuarios)
+│   │   └── types/            # Contratos TypeScript (Request/Response DTOs de todos los endpoints)
+│   ├── src/lib/              # Estado global reactivo en cliente (stores.ts) y renderizado de cards (card.ts)
+│   ├── src/layouts/          # Layout editorial Noble Muse (Header, Search, Quick View, Cart & Wishlist Drawers)
+│   ├── src/pages/            # Rutas SSR: Home (index.astro) y Detalle (/Productos/[id].astro)
+│   └── package.json          # Scripts y dependencias de frontend
+│
+└── docker-compose.yml        # Orquestación de Base de Datos (PostgreSQL 16) y Backend
+```
 
 ---
 
-## 🤖 Visión Futura: Asistente Inteligente con IA
+## 🏛️ Arquitectura del Backend (`backend/`)
 
-El backend cuenta con una arquitectura modular que permitirá integrar fácilmente el módulo **`ai-assistant`** como un copiloto omnicanal para la cadena:
+El backend combina dos patrones de diseño de software modernos:
 
-### Para los Clientes de la Tienda:
-* **Búsqueda Semántica de Productos:** Localización de productos en lenguaje natural (ej. *"¿tienen pan integral recién horneado bajo en sodio?"* o *"quiero un pastel para 15 personas"*).
-* **Atención y Asesoría 24/7:** Chatbot que responde dudas sobre ingredientes, alérgenos, precios, horarios de atención y disponibilidad en cada sucursal.
-* **Recomendaciones Inteligentes:** Sugerencias automáticas de productos complementarios según las preferencias del cliente.
+1. **Vertical Slice Architecture (Primer nivel)**: En lugar de agrupar todo el proyecto en carpetas técnicas globales (`controllers/`, `services/`, `repositories/`), el sistema se divide por **dominios de negocio independientes** (`productos`, `categorias`, `tiendas`, `ventas`, `usuarios`, `shared`).
+2. **Arquitectura Hexagonal / Ports & Adapters (Dentro de cada Slice)**: Cada módulo protege su lógica de negocio aislándola de frameworks externos, bases de datos y protocolos HTTP.
 
-### Para los Administradores de la Cadena:
-* **Generación de Contenido para Catálogo:** Redacción automatizada de descripciones comerciales atractivas y optimizadas para SEO.
-* **Analítica e Inteligencia de Inventario:** Consultas conversacionales para administradores (ej. *"¿cuál fue la sucursal con mayor venta de repostería esta semana?"* o alertas predictivas de stock).
+```text
+alex.probando.<modulo>
+├── domain/                         # NÚCLEO: Modelos puros de negocio (Sin anotaciones de Spring/JPA)
+├── application/
+│   ├── port/
+│   │   ├── in/                     # PUERTOS DE ENTRADA: Casos de uso (Interfaces que expone el negocio)
+│   │   └── out/                    # PUERTOS DE SALIDA: Interfaces que el negocio necesita (ej. Repositorios)
+│   └── service/                    # CASOS DE USO: Implementación de la lógica de negocio
+└── infra/
+    └── adapter/
+        ├── in/web/                 # ADAPTADOR PRIMARIO: Controladores REST, Request/Response DTOs y Mappers Web
+        └── out/persistence/jpa/    # ADAPTADOR SECUNDARIO: Entidades JPA, Spring Data Repositories y Mappers JPA
+```
+
+### Módulos del Sistema (Slices)
+
+| Slice | Responsabilidad Principal |
+| :--- | :--- |
+| **`productos`** | Gestión del catálogo maestro de productos (incluyendo `talla`), galería de imágenes (subida local y URLs externas), e inventario/precios diferenciados por sucursal (`tienda_productos`). |
+| **`categorias`** | Clasificación del catálogo de productos (Camisetas y Tops, Pantalones y Jeans, Calzado y Sneakers, Chamarras y Sudaderas, Accesorios). |
+| **`tiendas`** | Administración de sucursales físicas (Boutique Centro Histórico, Sucursal Plaza Norte, Fashion Outlet Sur) y consulta de stock por tienda. |
+| **`ventas`** | Registro transaccional de ventas por sucursal, descuento automático de stock local y reportes de productos más vendidos (ranking global o por tienda). |
+| **`usuarios`** | Gestión de usuarios, perfiles, asignación de roles (`ROLE_ADMIN`, `ROLE_VENDEDOR`, `ROLE_CLIENTE`) y endpoints de autenticación (`/api/v1/auth`). |
+| **`shared`** | Componentes transversales: Seguridad (Spring Security + sesiones HTTP), manejo global de excepciones (`GlobalExceptionHandler`), auditoría y configuración de almacenamiento de archivos (`WebConfig`). |
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-* **Lenguaje:** Java 27
-* **Framework:** Spring Boot 4.1.1
-* **Seguridad:** Spring Security 6+ con **JWT (JJWT)** y cookies **HttpOnly**
-* **Control de Acceso:** RBAC centralizado (`ADMIN`, `RH`, `CLIENTE`)
-* **Base de Datos:** PostgreSQL
-* **Migraciones Versionadas:** **Flyway** (`V1__init_schema.sql`)
-* **Persistencia:** Spring Data JPA / Hibernate (validación estricta de esquemas)
-* **Build Tool:** Gradle
-* **Documentación:** SpringDoc OpenAPI 3.0.2 / Swagger UI
-* **Entornos de Prueba:** Docker Compose & Testcontainers
-* **Herramientas:** Project Lombok
+### Backend
+- **Lenguaje**: Java 27 (Toolchain configurado en Gradle)
+- **Framework**: Spring Boot 4.1.1 (`spring-boot-starter-webmvc`, `data-jpa`, `security`, `validation`, `actuator`)
+- **Base de Datos**: PostgreSQL 16
+- **Migraciones**: Flyway (`V1` a `V8` ejecutadas automáticamente al iniciar)
+- **Documentación API**: SpringDoc OpenAPI 3 / Swagger UI (`3.0.2`)
+- **Herramientas**: Lombok
+
+### Frontend
+- **Framework**: Astro 7.0 (`output: 'server'` — SSR dinámico conectado 100% en tiempo real a la API)
+- **Estilos y Tema**: TailwindCSS 4.2 + Tema Editorial **Noble Muse (`astro-njx-muse`)** con fuentes *Cormorant Garamond* y *Plus Jakarta Sans*
+- **Cliente HTTP**: Axios 1.15
+- **Lenguaje**: TypeScript
 
 ---
 
-## 🏛️ Arquitectura: Hexagonal + Vertical Slices
+## 🚀 Requisitos Previos
 
-El sistema se organiza por módulos funcionales cohesivos (**Vertical Slices**), manteniendo en cada uno la separación de responsabilidades que exige la **Arquitectura Hexagonal**:
-
-```mermaid
-flowchart TD
-    subgraph Clientes [Clientes & Canales]
-        Web[Navegador Web / E-Commerce SPA]
-        Mobile[App Móvil / POS / Swagger]
-    end
-
-    subgraph Seguridad [Shared Security]
-        JwtFilter[JwtCookieAuthenticationFilter<br/>HttpOnly Cookie 'access_token' & Bearer]
-        SecManager[EndpointSecurityManager<br/>Centralized RBAC]
-    end
-
-    subgraph Slices [Vertical Slices de la Cadena]
-        subgraph AuthSlice [auth]
-            AuthController[AuthController] --> LoginUC[LoginUseCase]
-        end
-
-        subgraph UsuariosSlice [usuarios]
-            UserController[UsuarioController] --> UserUC[CRUD UseCases]
-            UserUC --> UserDomain[Usuario & Role Domain POJO]
-            UserUC --> UserRepoPort[UsuarioRepositoryPort]
-        end
-
-        subgraph TiendasSlice [tiendas - Sucursales]
-            TiendaController[TiendaController] --> TiendaUC[Tienda UseCases]
-            TiendaUC --> TiendaDomain[Tienda Domain POJO]
-            TiendaUC --> TiendaRepoPort[TiendaRepositoryPort]
-        end
-
-        subgraph AISlice [ai-assistant - Próximamente]
-            AIController[AIController] --> AIUC[Search & Chatbot UseCases]
-        end
-    end
-
-    subgraph Persistencia [Base de Datos]
-        Flyway[(Flyway Migrations)]
-        PostgreSQL[(PostgreSQL - Cadena DB)]
-    end
-
-    Clientes --> Seguridad
-    Seguridad --> Slices
-    UserRepoPort --> PostgreSQL
-    TiendaRepoPort --> PostgreSQL
-    Flyway -.-> PostgreSQL
-```
-
-### Reglas de Diseño:
-1. **Dominio Desacoplado:** El modelo (`domain/`) no contiene anotaciones de base de datos ni librerías externas.
-2. **Puertos y Adaptadores:** Toda comunicación externa se canaliza a través de puertos de entrada (`port/in`) y salida (`port/out`).
-3. **Seguridad Centralizada:** Toda la política de seguridad se gobierna desde `EndpointSecurityManager`, dejando los controladores web limpios y enfocados.
+- **Docker** y **Docker Compose** (para levantar PostgreSQL o el stack completo).
+- **JDK 27** (si deseas ejecutar el backend localmente fuera de Docker).
+- **Node.js 20+** y **npm** (para ejecutar el frontend en Astro).
 
 ---
 
-## 📂 Organización del Proyecto
+## ⚙️ Ejecución del Proyecto
 
-```text
-src/main/java/alex/probando/
-├── auth/                                    # Slice: Autenticación (Login, Logout, Sesión)
-│   ├── application/ (LoginUseCase, AuthService)
-│   └── infra/adapter/in/web/ (AuthController, DTOs)
-│
-├── usuarios/                                # Slice: Personal de la Cadena y Clientes
-│   ├── domain/ (Usuario, Role)
-│   ├── application/ (UseCases CRUD, UsuarioRepositoryPort, UsuarioService)
-│   └── infra/adapter/ (UsuarioController, DTOs, Entidades JPA, Repositorios)
-│
-├── tiendas/                                 # Slice: Sucursales de la Cadena
-│   ├── domain/ (Tienda)
-│   ├── application/ (Create, GetById, ListActivas, Update, Delete)
-│   └── infra/adapter/ (TiendaController, DTOs, TiendaEntity, Repositorios)
-│
-└── shared/                                  # Componentes Transversales
-    ├── config/ (OpenApiConfig)
-    ├── exception/ (GlobalExceptionHandler, Excepciones de Dominio)
-    └── security/ (JwtService, JwtCookieAuthenticationFilter, EndpointSecurityManager, SecurityConfig)
-```
+### Opción 1: Levantar Base de Datos con Docker y Backend/Frontend en modo desarrollo (Recomendado)
 
----
-
-## 🗄️ Migraciones de Base de Datos (Flyway)
-
-Las migraciones SQL viven en `src/main/resources/db/migration/`:
-
-* **`V1__init_schema.sql`**:
-  * **Usuarios y Roles:** Tablas `roles`, `usuarios` y la relación `usuario_roles`.
-  * **Sucursales y Catálogo:** Tablas `tiendas` (sucursales), `categorias` y `productos`.
-  * **Índices de Alto Rendimiento:** Índices para optimizar búsquedas por email, username, precios y categorías.
-  * **Semilla de Roles:** Carga inicial automática de roles (`ADMIN`, `RH`, `CLIENTE`).
-
----
-
-## 🔐 Matriz de Permisos y Roles (RBAC)
-
-* **`ADMIN` (Administradores de la Cadena):**
-  * Control total: Crear, actualizar y eliminar sucursales (`POST/PUT/DELETE /api/v1/tiendas`).
-  * Gestión de usuarios: Modificar roles, actualizar y eliminar cuentas (`/api/v1/usuarios/**`).
-* **`RH` (Recursos Humanos):**
-  * Consulta y gestión del listado de personal y usuarios de la cadena.
-  * Consulta de sucursales de la empresa.
-* **`CLIENTE` (Público General / Compradores):**
-  * Consulta pública de las sucursales y sus ubicaciones.
-  * Registro de cuenta y consulta de su propio perfil (`/api/v1/usuarios/perfil`).
-  * **No tienen permisos para crear ni modificar sucursales de la cadena.**
-
----
-
-## 🚦 Endpoints de la API
-
-| Módulo | Método | Endpoint | Acceso Requerido | Descripción |
-|---|---|---|---|---|
-| **Auth** | `POST` | `/api/v1/auth/login` | Público | Inicia sesión y emite cookie HttpOnly `access_token` |
-| **Auth** | `POST` | `/api/v1/auth/logout` | Público | Cierra sesión e invalida la cookie |
-| **Auth** | `GET` | `/api/v1/auth/me` | Autenticado | Retorna datos y roles del usuario activo |
-| **Usuarios** | `POST` | `/api/v1/usuarios` | Público | Registro de usuarios (rol inicial: `CLIENTE`) |
-| **Usuarios** | `GET` | `/api/v1/usuarios` | `ADMIN` o `RH` | Listado general con filtro opcional (`?rol=ADMIN`, etc.) |
-| **Usuarios** | `GET` | `/api/v1/usuarios/perfil`| Autenticado | Consulta del propio perfil |
-| **Usuarios** | `GET` | `/api/v1/usuarios/{id}` | `ADMIN` o `RH` | Consulta de usuario por ID |
-| **Usuarios** | `PUT` | `/api/v1/usuarios/{id}` | `ADMIN` | Actualización de usuario |
-| **Usuarios** | `DELETE`| `/api/v1/usuarios/{id}`| `ADMIN` | Eliminación de usuario |
-| **Usuarios** | `PATCH`| `/api/v1/usuarios/{id}/roles`| `ADMIN`| Asignación de roles al usuario |
-| **Sucursales** | `GET` | `/api/v1/tiendas` | Público | Catálogo de sucursales activas de la cadena |
-| **Sucursales** | `GET` | `/api/v1/tiendas/{id}` | Público | Información de una sucursal específica |
-| **Sucursales** | `POST`| `/api/v1/tiendas` | **`ADMIN`** | Dar de alta una nueva sucursal de la cadena |
-| **Sucursales** | `PUT` | `/api/v1/tiendas/{id}` | **`ADMIN`** | Modificar datos de una sucursal |
-| **Sucursales** | `DELETE`| `/api/v1/tiendas/{id}`| **`ADMIN`** | Dar de baja una sucursal |
-
----
-
-## 🚀 Puesta en Marcha
-
-### 1. Iniciar Base de Datos con Docker Compose
+#### 1. Iniciar PostgreSQL
+Desde la raíz del repositorio, levanta únicamente el contenedor de base de datos:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
+*Esto expondrá PostgreSQL en `localhost:5432` con la base de datos `midb` (`usuario` / `secreto`).*
 
-### 2. Ejecutar la Aplicación
-
+#### 2. Iniciar el Backend (Spring Boot)
 ```bash
+cd backend
 ./gradlew bootRun
 ```
+- La API estará disponible en: `http://localhost:8080`
+- **Flyway** creará automáticamente las tablas y cargará los datos semilla (`V1` a `V8`).
+- Documentación interactiva **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- Especificación OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
 
-La aplicación se levantará en: `http://localhost:8080`.
+#### 3. Iniciar el Frontend (Astro SSR)
+En otra terminal:
+```bash
+cd front
+npm install
+npm run dev
+```
+- La aplicación web estará disponible en: `http://localhost:4321`
 
-### 3. Documentación Interactiva OpenAPI / Swagger UI
+---
 
-Abre en tu navegador:  
-👉 **`http://localhost:8080/swagger-ui/index.html`**
+### Opción 2: Levantar Backend + Base de Datos con Docker Compose
 
-### 4. Ejecución de Pruebas Automatizadas
+Si prefieres compilar y correr el backend dentro de Docker junto con PostgreSQL:
 
 ```bash
+docker compose up --build -d
+```
+
+---
+
+## 🗄️ Modelo de Datos y Migraciones (Flyway)
+
+Las migraciones se encuentran en `backend/src/main/resources/db/migration/` y se ejecutan en orden secuencial:
+
+1. **`V1__init_schema.sql`**: Crea las tablas base `usuarios`, `roles`, `usuario_roles`, `categorias`, `productos` y `ventas`.
+2. **`V2__insert_roles_and_admin.sql`**: Inserta roles iniciales y el usuario administrador por defecto.
+3. **`V3__tiendas_e_imagenes_producto.sql`**: Añade soporte multi-sucursal (`tiendas`, `tienda_productos`), galería de imágenes (`producto_imagenes`) y vincula las ventas a una tienda específica.
+4. **`V4__seed_data_completa.sql`**: Datos semilla iniciales de prueba.
+5. **`V5__ajustar_precios_reales.sql`**: Ajuste de precios e inventario multi-sucursal.
+6. **`V6__imagenes_reales_panaderia.sql`**: Migración histórica de imágenes de catálogo.
+7. **`V7__catalogo_moda_productos.sql`**: Transforma el catálogo a una cadena de **Moda Urbana, Calzado, Sneakers y Accesorios** (3 boutiques/sucursales, 5 categorías de moda, 12 productos con fotografías editoriales, precios diferenciados por sucursal y ventas de ejemplo).
+8. **`V8__agregar_talla_productos.sql`**: Añade la columna `talla VARCHAR(100)` a la tabla `productos` y asigna tallas reales según el tipo de artículo (ej. `S, M, L, XL` en ropa, `28, 30, 32, 34` en jeans, `25.5, 26, 27, 28 MX` en calzado y `Unitalla` en accesorios).
+
+> **Nota sobre borrado lógico (Soft Delete):** Las entidades principales utilizan la columna `activo = true/false` para dar de baja registros sin perder integridad referencial histórica en las ventas.
+
+---
+
+## 🔐 Autenticación y Credenciales de Prueba
+
+El backend utiliza **Spring Security** con sesiones HTTP (`JSESSIONID`) mediante el endpoint `/api/v1/auth/login`.
+
+| Rol | Email | Contraseña | Permisos |
+| :--- | :--- | :--- | :--- |
+| **Administrador** | `admin@correo.com` | `admin123` | Control total (`POST`, `PUT`, `DELETE` en categorías, productos, tiendas, inventario y usuarios). |
+| **Vendedor** | `carlos.vendedor@correo.com` | `admin123` | Consulta de catálogo y registro de ventas. |
+| **Cliente** | `ana.cliente@correo.com` | `admin123` | Consulta pública de catálogo, sucursales y productos principales. |
+
+---
+
+## 📡 Principales Endpoints de la API (`/api/v1`)
+
+### Autenticación (`/api/v1/auth`)
+- `POST /api/v1/auth/login` — Iniciar sesión con email y password.
+- `POST /api/v1/auth/logout` — Cerrar sesión activa.
+- `GET /api/v1/auth/me` — Obtener datos y roles del usuario en sesión.
+
+### Productos (`/api/v1/productos`)
+- `GET /api/v1/productos/principales` — Catálogo público enriquecido (incluye `talla`, rango `precioMin` / `precioMax`, `stockTotal`, galería de imágenes y desglose por tienda).
+- `GET /api/v1/productos?tiendaId={uuid}` — Listar productos (opcionalmente filtrados por sucursal).
+- `GET /api/v1/productos/{id}` — Detalle completo de un producto (incluye `talla`, categoría, imágenes y disponibilidad por sucursal).
+- `POST /api/v1/productos` — Crear producto con nombre, descripción, precio base, stock, categoría, `talla` e imágenes *(Admin)*.
+- `PUT /api/v1/productos/{id}` — Actualizar datos generales del producto incluyendo `talla` *(Admin)*.
+- `DELETE /api/v1/productos/{id}` — Eliminar producto lógicamente *(Admin)*.
+- `POST /api/v1/productos/{id}/tiendas` — Asignar o actualizar precio y stock de un producto en una sucursal *(Admin)*.
+- `DELETE /api/v1/productos/{id}/tiendas/{tiendaId}` — Remover producto de una sucursal *(Admin)*.
+- `POST /api/v1/productos/{id}/imagenes` — Subir archivos de imagen (`multipart/form-data`) para un producto *(Admin)*.
+- `PUT /api/v1/productos/{id}/imagenes/{imagenId}/principal` — Marcar imagen como portada principal *(Admin)*.
+- `DELETE /api/v1/productos/{id}/imagenes/{imagenId}` — Eliminar una imagen de un producto *(Admin)*.
+
+### Categorías (`/api/v1/categorias`)
+- `GET /api/v1/categorias` — Listar categorías activas.
+- `GET /api/v1/categorias/{id}` — Obtener categoría por ID.
+- `POST /api/v1/categorias` / `PUT /api/v1/categorias/{id}` / `DELETE /api/v1/categorias/{id}` — CRUD de categorías *(Admin)*.
+
+### Tiendas / Sucursales (`/api/v1/tiendas`)
+- `GET /api/v1/tiendas` — Listar todas las sucursales activas.
+- `GET /api/v1/tiendas/{id}` — Obtener detalle de sucursal.
+- `POST /api/v1/tiendas` / `PUT /api/v1/tiendas/{id}` / `DELETE /api/v1/tiendas/{id}` — CRUD de sucursales *(Admin)*.
+
+### Ventas (`/api/v1/ventas`)
+- `POST /api/v1/ventas` — Registrar una venta en una sucursal (descuenta stock automáticamente).
+- `GET /api/v1/ventas/mas-vendidos?tiendaId={uuid}&limit=10` — Ranking de productos más vendidos (global o por sucursal).
+- `GET /api/v1/ventas/tienda/{tiendaId}` — Historial de ventas de una sucursal.
+
+### Usuarios (`/api/v1/usuarios`)
+- `GET /api/v1/usuarios` — Listar todos los usuarios *(Admin)*.
+- `GET /api/v1/usuarios/{id}` — Obtener usuario por ID *(Admin)*.
+- `POST /api/v1/usuarios` / `PUT /api/v1/usuarios/{id}` / `DELETE /api/v1/usuarios/{id}` — CRUD de usuarios *(Admin)*.
+- `POST /api/v1/usuarios/{id}/roles` — Asignar roles a un usuario *(Admin)*.
+
+---
+
+## 🖥️ Arquitectura del Frontend (`front/`)
+
+El frontend está construido con **Astro 7 en modo SSR (`output: 'server'`)** e implementa el diseño editorial **Noble Muse (`astro-njx-muse`)**, alimentado al **100% por la API REST del backend** (sin productos ni imágenes estáticas locales):
+
+- **`src/api/client/BaseApi.ts`**: Cliente centralizado con Axios apuntando a `http://localhost:8080/api/v1/`.
+- **`src/api/services/`**: Servicios tipados para los 6 módulos del backend (`ProductosApi`, `CategoriasApi`, `TiendasApi`, `AuthApi`, `VentasApi`, `UsuariosApi`) exportados en un barril (`index.ts`).
+- **`src/api/types/`**: Interfaces TypeScript completas para todos los DTOs de entrada y salida de la API (`ProductoResponse` con `talla`, `CategoriaResponse`, `TiendaResponse`, `VentaResponse`, `ProductoMasVendidoResponse`, `UsuarioResponse`, `AuthResponse`, etc.).
+- **`src/lib/stores.ts` y `src/lib/card.ts`**: Gestión en cliente de **Carrito de compras (`CartStore`)**, **Lista de deseos (`WishlistStore`)**, **Vista Rápida (`QuickView`)** con selector interactivo de tallas y sucursales, y notificaciones **Toast**.
+- **`src/pages/index.astro` y `src/pages/Productos/ListaProducto.astro`**:
+  - **Hero Slider dinámico** con los productos destacados de la API.
+  - **Mosaico de Colecciones por Categoría** y **Directorio de Sucursales** con filtrado directo en un clic.
+  - **Barra de Filtros Interactiva**: filtra en tiempo real por **Sucursal** (actualizando el precio y stock específicos de esa tienda), **Categoría**, **Talla**, **Rango de Precio** y **Ordenamiento**.
+  - **Ranking Top Ventas** conectado a `/api/v1/ventas/mas-vendidos`.
+- **`src/pages/Productos/[id].astro` y `src/pages/Productos/Producto.astro`**:
+  - Página de detalle SSR dinámica para cualquier UUID de producto, con galería interactiva de imágenes, selector de tallas (`producto.talla`), tabla comparativa de precios y stock por sucursal, productos relacionados y acciones de compra/favoritos.
+
+---
+
+## 🧪 Pruebas y Compilación
+
+Para ejecutar los tests unitarios y verificar la compilación del backend:
+
+```bash
+cd backend
 ./gradlew test
 ```
 
+Para verificar la compilación de producción del frontend:
+
+```bash
+cd front
+npm run build
+```
+
 ---
 
-## 📄 Licencia
+## 👤 Autor
 
-Este software es de carácter propietario. Consulta el archivo [LICENSE](LICENSE) para conocer los términos de uso.
+**Alexander Aviles (Alkeys)**
+- GitHub: [@alkeys](https://github.com/alkeys)
