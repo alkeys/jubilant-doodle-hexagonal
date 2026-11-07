@@ -1,4 +1,4 @@
-import { apiClient } from "../../lib/ApiClient";
+import { apiClient, resolveImageUrl } from "../../lib/ApiClient";
 import type { ProductoImagenResponse } from "../../types/productos/ProductoImagenResponse";
 import type { ProductoRequest } from "../../types/productos/ProductoRequest";
 import type { ProductoResponse } from "../../types/productos/ProductoResponse";
@@ -13,6 +13,22 @@ export interface ListProductosParams {
     incluirInactivos?: boolean;
 }
 
+function normalizeImagen(img: ProductoImagenResponse): ProductoImagenResponse {
+    return {
+        ...img,
+        url: resolveImageUrl(img.url),
+    };
+}
+
+function normalizeProducto(prod: ProductoResponse): ProductoResponse {
+    return {
+        ...prod,
+        imagenes: Array.isArray(prod.imagenes)
+            ? prod.imagenes.map(normalizeImagen)
+            : [],
+    };
+}
+
 export class ProductosApi {
     private basePath = "/productos";
 
@@ -22,7 +38,7 @@ export class ProductosApi {
      */
     async listProductos(params?: ListProductosParams): Promise<ProductoResponse[]> {
         const response = await apiClient.get<ProductoResponse[]>(this.basePath, { params });
-        return response.data;
+        return (response.data ?? []).map(normalizeProducto);
     }
 
     /**
@@ -37,7 +53,7 @@ export class ProductosApi {
             `${this.basePath}/principales`,
             { params: { pagina, limite } }
         );
-        return response.data;
+        return (response.data ?? []).map(normalizeProducto);
     }
 
     /**
@@ -46,7 +62,7 @@ export class ProductosApi {
      */
     async getProductoById(id: string): Promise<ProductoResponse> {
         const response = await apiClient.get<ProductoResponse>(`${this.basePath}/${id}`);
-        return response.data;
+        return normalizeProducto(response.data);
     }
 
     /**
@@ -55,7 +71,7 @@ export class ProductosApi {
      */
     async createProducto(request: ProductoRequest): Promise<ProductoResponse> {
         const response = await apiClient.post<ProductoResponse>(this.basePath, request);
-        return response.data;
+        return normalizeProducto(response.data);
     }
 
     /**
@@ -70,7 +86,7 @@ export class ProductosApi {
             `${this.basePath}/${id}`,
             request
         );
-        return response.data;
+        return normalizeProducto(response.data);
     }
 
     /**
@@ -122,7 +138,7 @@ export class ProductosApi {
                 headers: { "Content-Type": "multipart/form-data" },
             }
         );
-        return response.data;
+        return (response.data ?? []).map(normalizeImagen);
     }
 
     /**
@@ -144,6 +160,6 @@ export class ProductosApi {
         const response = await apiClient.put<ProductoResponse>(
             `${this.basePath}/${id}/imagenes/${imagenId}/principal`
         );
-        return response.data;
+        return normalizeProducto(response.data);
     }
 }
