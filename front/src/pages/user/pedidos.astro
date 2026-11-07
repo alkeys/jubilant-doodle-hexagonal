@@ -1,0 +1,348 @@
+---
+// src/pages/user/pedidos.astro
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Mis Pedidos — NOBLE MUSE" heroHeader={false}>
+  <main class="mx-auto max-w-[1640px] px-5 pb-24 pt-28 sm:pt-36 lg:px-9">
+    <!-- Migas de pan -->
+    <div class="mb-8 flex items-center justify-between border-b border-line pb-4">
+      <div class="cap-xs text-muted">
+        <a href="/" class="hover:text-ink transition">INICIO</a>
+        <span class="mx-2">/</span>
+        <a href="/user/account" class="hover:text-ink transition">MI CUENTA</a>
+        <span class="mx-2">/</span>
+        <span class="text-ink">PEDIDOS</span>
+      </div>
+      <span class="note text-muted">historial de compras · /api/v1/ventas</span>
+    </div>
+
+    <!-- Estado de Carga -->
+    <div
+      id="pedidos-loading"
+      class="flex flex-col items-center justify-center border border-line bg-white py-24 text-center"
+    >
+      <div class="cap-xs mb-2 text-acc">CONSULTANDO PEDIDOS</div>
+      <p class="text-[13px] tracking-[0.06em] text-soft">
+        Cargando tu historial de compras...
+      </p>
+    </div>
+
+    <!-- Vista cuando NO ha iniciado sesión -->
+    <div
+      id="pedidos-guest"
+      class="anim-fade hidden flex-col items-center justify-center border border-line bg-white px-6 py-20 text-center"
+    >
+      <div class="cap-xs mb-3 text-acc">AUTENTICACIÓN REQUERIDA</div>
+      <h1 class="m-0 text-[24px] font-normal tracking-[0.2em] text-ink">
+        INICIA SESIÓN PARA VER TUS PEDIDOS
+      </h1>
+      <p class="mt-3 max-w-[44ch] text-[12.5px] leading-relaxed text-soft">
+        Accede a tu cuenta para consultar el estado de tus compras, recibos por
+        sucursal y folios de transacción.
+      </p>
+      <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+        <a
+          href="/user/Login?redirect=/user/pedidos"
+          class="btn-ink px-8 py-4 text-center"
+        >
+          Iniciar sesión
+        </a>
+        <a
+          href="/user/register"
+          class="btn-ghost px-8 py-4 text-center text-ink"
+        >
+          Crear cuenta
+        </a>
+      </div>
+    </div>
+
+    <!-- Vista Principal de Pedidos -->
+    <div id="pedidos-content" class="anim-fade hidden flex-col gap-8">
+      <!-- Encabezado y KPIs -->
+      <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="border border-line bg-[#191936] p-6 text-white">
+          <div class="cap-xs text-acclite">PEDIDOS REALIZADOS</div>
+          <div
+            id="ped-kpi-count"
+            class="mt-2 text-[30px] font-normal tracking-[0.1em]"
+          >
+            0
+          </div>
+          <div class="note mt-1 text-white/70">transacciones registradas</div>
+        </div>
+
+        <div class="border border-line bg-white p-6">
+          <div class="cap-xs text-muted">PIEZAS ADQUIRIDAS</div>
+          <div
+            id="ped-kpi-units"
+            class="mt-2 text-[30px] font-normal tracking-[0.1em] text-ink"
+          >
+            0
+          </div>
+          <div class="note mt-1 text-soft">unidades compradas</div>
+        </div>
+
+        <div class="border border-line bg-white p-6">
+          <div class="cap-xs text-muted">IMPORTE ACUMULADO</div>
+          <div
+            id="ped-kpi-total"
+            class="mt-2 text-[30px] font-normal tracking-[0.1em] text-acc"
+          >
+            $0.00
+          </div>
+          <div class="note mt-1 text-soft">total pagado en sucursales</div>
+        </div>
+      </section>
+
+      <!-- Barra de herramientas y listado -->
+      <section class="border border-line bg-white p-6 sm:p-8">
+        <div class="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-5 sm:flex-row sm:items-end">
+          <div>
+            <div class="cap-xs mb-1.5 text-acc">REGISTRO DE TRANSACCIONES</div>
+            <h1 class="m-0 text-[22px] font-normal tracking-[0.2em] text-ink">
+              HISTORIAL DE PEDIDOS
+            </h1>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <input
+              id="ped-search"
+              type="text"
+              placeholder="Buscar por producto, sucursal o folio..."
+              class="border border-line bg-tint/20 px-4 py-2.5 text-[12px] outline-none focus:border-ink sm:w-[280px]"
+            />
+            <a href="/#catalogo" class="btn-ink px-5 py-3 text-center">
+              + Nueva Compra
+            </a>
+          </div>
+        </div>
+
+        <div
+          id="ped-empty"
+          class="cap-tag hidden py-16 text-center text-muted"
+        >
+          No se encontraron pedidos registrados.
+        </div>
+
+        <div id="ped-list" class="flex flex-col gap-4"></div>
+      </section>
+    </div>
+
+    <!-- Modal de Comprobante de Pedido (GET /api/v1/ventas/{id}) -->
+    <div
+      id="ped-receipt-modal"
+      class="fixed inset-0 z-[220] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+    >
+      <div class="flex w-[min(480px,100%)] flex-col gap-5 border border-line bg-white p-7 sm:p-8">
+        <div class="flex items-center justify-between border-b border-line pb-3">
+          <span class="cap-xs text-acc">COMPROBANTE OFICIAL · NOBLE MUSE</span>
+          <button
+            id="ped-receipt-close"
+            type="button"
+            class="cap cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="ped-receipt-body" class="flex flex-col gap-3 text-[12px]"></div>
+        <div class="flex gap-3 pt-2">
+          <button
+            id="ped-print-btn"
+            type="button"
+            class="btn-ink flex-1 py-3.5"
+          >
+            Imprimir comprobante
+          </button>
+          <button
+            id="ped-receipt-close-2"
+            type="button"
+            class="btn-ghost flex-1 py-3.5 text-ink"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
+  import { VentasApi } from "../../api/services/ventas/VentasApi";
+  import type { VentaResponse } from "../../api/types/ventas/VentaResponse";
+
+  const usuariosApi = new UsuariosApi();
+  const ventasApi = new VentasApi();
+
+  let allPedidos: VentaResponse[] = [];
+
+  const loadingBox = document.getElementById("pedidos-loading");
+  const guestBox = document.getElementById("pedidos-guest");
+  const contentBox = document.getElementById("pedidos-content");
+
+  const kpiCount = document.getElementById("ped-kpi-count");
+  const kpiUnits = document.getElementById("ped-kpi-units");
+  const kpiTotal = document.getElementById("ped-kpi-total");
+  const searchInput = document.getElementById("ped-search") as HTMLInputElement;
+  const emptyBox = document.getElementById("ped-empty");
+  const listBox = document.getElementById("ped-list");
+
+  const receiptModal = document.getElementById("ped-receipt-modal");
+  const receiptBody = document.getElementById("ped-receipt-body");
+
+  function renderPedidos() {
+    if (!listBox || !emptyBox) return;
+    const q = (searchInput?.value || "").trim().toLowerCase();
+
+    const filtered = allPedidos.filter((v) => {
+      if (!q) return true;
+      return (
+        v.productoNombre.toLowerCase().includes(q) ||
+        v.tiendaNombre.toLowerCase().includes(q) ||
+        v.id.toLowerCase().includes(q)
+      );
+    });
+
+    if (filtered.length === 0) {
+      emptyBox.classList.remove("hidden");
+      listBox.innerHTML = "";
+      return;
+    }
+
+    emptyBox.classList.add("hidden");
+    listBox.innerHTML = filtered
+      .map((v) => {
+        const fecha = v.fechaVenta
+          ? new Date(v.fechaVenta).toLocaleString("es-SV", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          : "—";
+
+        return `
+          <article class="flex flex-col justify-between gap-4 border border-line bg-tint/15 p-5 transition hover:border-ink sm:flex-row sm:items-center">
+            <div class="flex flex-col gap-1.5">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="cap-xs bg-ink px-2.5 py-1 text-white">COMPLETADO</span>
+                <span class="note text-muted">Folio: ${v.id}</span>
+                <span class="note text-soft">· ${fecha}</span>
+              </div>
+              <a href="/Productos/${v.productoId}" class="mt-1 text-[15px] font-medium tracking-[0.08em] text-ink hover:underline">
+                ${v.productoNombre.toUpperCase()}
+              </a>
+              <div class="text-[12px] text-soft">
+                Sucursal: <strong class="font-normal text-ink">${v.tiendaNombre}</strong> · Cantidad: <strong class="font-normal text-ink">${v.cantidad} u.</strong> × $${Number(v.precioUnitario).toFixed(2)}
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-6 border-t border-linesoft pt-3 sm:border-none sm:pt-0">
+              <div class="text-right">
+                <div class="cap-xs text-muted">TOTAL PAGADO</div>
+                <div class="text-[18px] font-medium tracking-[0.06em] text-acc">
+                  $${Number(v.totalPagado).toFixed(2)}
+                </div>
+              </div>
+              <button
+                type="button"
+                data-open-receipt="${v.id}"
+                class="btn-ghost px-4 py-3 text-ink"
+              >
+                Ver recibo
+              </button>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  async function initPedidos() {
+    try {
+      const perfil = await usuariosApi.getMiPerfil();
+      allPedidos = await ventasApi.listVentas({ clienteId: perfil.id });
+
+      const totalUnits = allPedidos.reduce(
+        (acc, v) => acc + Number(v.cantidad || 0),
+        0
+      );
+      const totalAmount = allPedidos.reduce(
+        (acc, v) => acc + Number(v.totalPagado || 0),
+        0
+      );
+
+      if (kpiCount) kpiCount.textContent = String(allPedidos.length);
+      if (kpiUnits) kpiUnits.textContent = String(totalUnits);
+      if (kpiTotal) kpiTotal.textContent = `$${totalAmount.toFixed(2)}`;
+
+      loadingBox?.classList.add("hidden");
+      contentBox?.classList.remove("hidden");
+      contentBox?.classList.add("flex");
+
+      renderPedidos();
+    } catch {
+      loadingBox?.classList.add("hidden");
+      guestBox?.classList.remove("hidden");
+      guestBox?.classList.add("flex");
+    }
+  }
+
+  searchInput?.addEventListener("input", renderPedidos);
+
+  listBox?.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "[data-open-receipt]"
+    ) as HTMLElement | null;
+    if (!btn) return;
+    const id = btn.dataset.openReceipt!;
+    const v = await ventasApi.getVentaById(id);
+    if (receiptBody && receiptModal) {
+      receiptBody.innerHTML = `
+        <div class="flex justify-between border-b border-linesoft py-2">
+          <span class="cap-xs text-muted">FOLIO DE VENTA</span>
+          <span class="note text-ink">${v.id}</span>
+        </div>
+        <div class="flex justify-between border-b border-linesoft py-2">
+          <span class="cap-xs text-muted">CLIENTE</span>
+          <span>${v.clienteNombreCompleto}</span>
+        </div>
+        <div class="flex justify-between border-b border-linesoft py-2">
+          <span class="cap-xs text-muted">SUCURSAL DE DESPACHO</span>
+          <span>${v.tiendaNombre}</span>
+        </div>
+        <div class="flex justify-between border-b border-linesoft py-2">
+          <span class="cap-xs text-muted">ARTÍCULO</span>
+          <span class="font-medium">${v.productoNombre}</span>
+        </div>
+        <div class="flex justify-between border-b border-linesoft py-2">
+          <span class="cap-xs text-muted">CANTIDAD × PRECIO UNITARIO</span>
+          <span>${v.cantidad} × $${Number(v.precioUnitario).toFixed(2)}</span>
+        </div>
+        <div class="flex justify-between border-b border-linesoft py-2 text-[14px] font-medium">
+          <span class="cap-xs text-ink">TOTAL PAGADO</span>
+          <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+        </div>
+        <div class="flex justify-between pt-1">
+          <span class="cap-xs text-muted">FECHA Y HORA</span>
+          <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+        </div>
+      `;
+      receiptModal.classList.add("on");
+    }
+  });
+
+  document
+    .getElementById("ped-receipt-close")
+    ?.addEventListener("click", () => receiptModal?.classList.remove("on"));
+  document
+    .getElementById("ped-receipt-close-2")
+    ?.addEventListener("click", () => receiptModal?.classList.remove("on"));
+  document
+    .getElementById("ped-print-btn")
+    ?.addEventListener("click", () => window.print());
+
+  initPedidos();
+</script>
+

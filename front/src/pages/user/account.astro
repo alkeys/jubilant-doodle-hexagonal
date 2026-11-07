@@ -1,0 +1,609 @@
+---
+// src/pages/user/account.astro
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Mi Cuenta — NOBLE MUSE" heroHeader={false}>
+  <main class="mx-auto max-w-[1640px] px-5 pb-24 pt-28 sm:pt-36 lg:px-9">
+    <!-- Migas de pan estilo Noble Muse -->
+    <div class="mb-8 flex items-center justify-between border-b border-line pb-4">
+      <div class="cap-xs text-muted">
+        <a href="/" class="hover:text-ink transition">INICIO</a>
+        <span class="mx-2">/</span>
+        <span class="text-ink">MI PERFIL</span>
+      </div>
+      <span class="note text-muted">get /api/v1/usuarios/perfil · /api/v1/ventas</span>
+    </div>
+
+    <!-- Estado de Carga -->
+    <div
+      id="account-loading"
+      class="flex flex-col items-center justify-center border border-line bg-white py-24 text-center"
+    >
+      <div class="cap-xs mb-2 text-acc">SINCRONIZANDO PERFIL</div>
+      <p class="text-[13px] tracking-[0.06em] text-soft">
+        Consultando la información de tu cuenta...
+      </p>
+    </div>
+
+    <!-- Vista cuando NO ha iniciado sesión -->
+    <div
+      id="account-guest"
+      class="anim-fade hidden flex-col items-center justify-center border border-line bg-white px-6 py-20 text-center"
+    >
+      <div class="cap-xs mb-3 text-acc">SESIÓN NO INICIADA</div>
+      <h1 class="m-0 text-[24px] font-normal tracking-[0.2em] text-ink">
+        ACCEDE A TU CUENTA NOBLE MUSE
+      </h1>
+      <p class="mt-3 max-w-[44ch] text-[12.5px] leading-relaxed text-soft">
+        Para consultar tus datos personales, historial de compras y estado de tu
+        perfil, inicia sesión o registra una cuenta nueva.
+      </p>
+      <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+        <a href="/user/Login" class="btn-ink px-8 py-4 text-center">
+          Iniciar sesión
+        </a>
+        <a
+          href="/user/register"
+          class="btn-ghost px-8 py-4 text-center text-ink"
+        >
+          Crear cuenta nueva
+        </a>
+      </div>
+    </div>
+
+    <!-- Vista Principal del Perfil Autenticado -->
+    <div id="account-content" class="anim-fade hidden flex-col gap-10">
+      <!-- ── 1. Cabecera del Perfil ── -->
+      <section class="flex flex-col justify-between gap-6 border border-line bg-[#191936] p-8 text-white sm:flex-row sm:items-end sm:p-12">
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <span
+              id="acc-status-badge"
+              class="cap-xs bg-acc px-2.5 py-1 text-white"
+            >
+              CUENTA ACTIVA
+            </span>
+            <span id="acc-roles-badge" class="note text-acclite"></span>
+          </div>
+          <h1
+            id="acc-fullname"
+            class="m-0 text-[clamp(24px,3vw,38px)] font-normal leading-tight tracking-[0.18em]"
+          >
+            MI CUENTA
+          </h1>
+          <p
+            id="acc-username-sub"
+            class="m-0 text-[12px] tracking-[0.12em] text-white/75"
+          ></p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Botón exclusivo para ADMIN y RH -->
+          <a
+            id="acc-admin-btn"
+            href="/admin"
+            class="hidden border border-acclite bg-acc px-5 py-3 text-[10px] tracking-[0.2em] uppercase text-white transition hover:opacity-90"
+          >
+            Panel de Administración ↗
+          </a>
+          <a
+            href="/user/pedidos"
+            class="border border-white/30 px-5 py-3 text-[10px] tracking-[0.2em] uppercase text-white transition hover:border-white hover:bg-white hover:text-ink"
+          >
+            Mis Pedidos
+          </a>
+          <a
+            href="/#catalogo"
+            class="border border-white/30 px-5 py-3 text-[10px] tracking-[0.2em] uppercase text-white transition hover:border-white hover:bg-white hover:text-ink"
+          >
+            Explorar catálogo
+          </a>
+          <button
+            id="acc-logout-btn"
+            type="button"
+            class="cursor-pointer border border-white/30 bg-white/10 px-5 py-3 text-[10px] tracking-[0.2em] uppercase text-white transition hover:border-red-600 hover:bg-red-600"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </section>
+
+      <!-- ── 2. Grid de Información de la Cuenta y Actividad ── -->
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        <!-- Ficha de Datos Personales (8 columnas) -->
+        <section class="flex flex-col justify-between border border-line bg-white p-8 sm:p-10 lg:col-span-8">
+          <div>
+            <div class="mb-8 flex items-center justify-between border-b border-line pb-4">
+              <div>
+                <div class="cap-xs mb-1 text-acc">FICHA DE CLIENTE</div>
+                <h2 class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink">
+                  INFORMACIÓN PERSONAL
+                </h2>
+              </div>
+              <span class="note text-muted">datos verificados</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2">
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">NOMBRE(S)</div>
+                <div
+                  id="acc-nombre"
+                  class="mt-2 text-[15px] tracking-[0.06em] text-ink"
+                >
+                  —
+                </div>
+              </div>
+
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">APELLIDO(S)</div>
+                <div
+                  id="acc-apellido"
+                  class="mt-2 text-[15px] tracking-[0.06em] text-ink"
+                >
+                  —
+                </div>
+              </div>
+
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">NOMBRE DE USUARIO</div>
+                <div
+                  id="acc-username"
+                  class="mt-2 text-[15px] tracking-[0.06em] text-ink"
+                >
+                  —
+                </div>
+              </div>
+
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">CORREO ELECTRÓNICO</div>
+                <div
+                  id="acc-email"
+                  class="mt-2 break-all text-[15px] tracking-[0.04em] text-ink"
+                >
+                  —
+                </div>
+              </div>
+
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">EDAD REGISTRADA</div>
+                <div
+                  id="acc-edad"
+                  class="mt-2 text-[15px] tracking-[0.06em] text-ink"
+                >
+                  —
+                </div>
+              </div>
+
+              <div class="border-b border-linesoft pb-4">
+                <div class="cap-xs text-muted">ROLES Y PERMISOS</div>
+                <div
+                  id="acc-roles-list"
+                  class="mt-2 flex flex-wrap gap-2"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8 flex flex-wrap items-center justify-between gap-4 bg-tint/45 px-4 py-3">
+            <span class="cap-xs text-muted">ID DE USUARIO (UUID)</span>
+            <span id="acc-id" class="note select-all text-ink">—</span>
+          </div>
+        </section>
+
+        <!-- Panel Lateral de Resumen en Tienda (4 columnas) -->
+        <aside class="flex flex-col gap-6 lg:col-span-4">
+          <div class="border border-line bg-white p-8">
+            <div class="cap-xs mb-1 text-muted">MI ACTIVIDAD</div>
+            <h3 class="m-0 mb-6 border-b border-line pb-4 text-[16px] font-normal tracking-[0.18em] text-ink">
+              RESUMEN DE COMPRA
+            </h3>
+
+            <div class="flex flex-col gap-5">
+              <div class="flex items-center justify-between border-b border-linesoft pb-4">
+                <div>
+                  <div class="cap-tag text-ink">Bolsa de Compra</div>
+                  <div class="text-[11px] text-soft">
+                    Piezas listas para checkout
+                  </div>
+                </div>
+                <span
+                  data-cart-count
+                  class="text-[20px] font-normal tracking-[0.1em] text-acc"
+                >
+                  0
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between border-b border-linesoft pb-4">
+                <div>
+                  <div class="cap-tag text-ink">Lista de Favoritos</div>
+                  <div class="text-[11px] text-soft">
+                    Piezas guardadas en wishlist
+                  </div>
+                </div>
+                <span
+                  data-wish-count
+                  class="text-[20px] font-normal tracking-[0.1em] text-ink"
+                >
+                  0
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  data-open-cart
+                  class="btn-ink py-3.5 text-center"
+                >
+                  Abrir Bolsa
+                </button>
+                <button
+                  type="button"
+                  data-open-wish
+                  class="btn-ghost py-3.5 text-center text-ink"
+                >
+                  Ver Favoritos
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accesos Rápidos -->
+          <div class="border border-line bg-tint/35 p-8">
+            <div class="cap-xs mb-4 text-muted">NAVEGACIÓN RÁPIDA</div>
+            <div class="flex flex-col gap-3 text-[12px] tracking-[0.08em]">
+              <a
+                href="/user/pedidos"
+                class="flex items-center justify-between border-b border-line pb-2.5 font-medium text-acc transition hover:text-ink"
+              >
+                <span>VENTANA DE MIS PEDIDOS</span>
+                <span>→</span>
+              </a>
+              <a
+                href="/#catalogo"
+                class="flex items-center justify-between border-b border-line pb-2.5 text-ink transition hover:text-acc"
+              >
+                <span>CATÁLOGO MULTITIENDA</span>
+                <span>→</span>
+              </a>
+              <a
+                href="/#top-ventas"
+                class="flex items-center justify-between border-b border-line pb-2.5 text-ink transition hover:text-acc"
+              >
+                <span>PRODUCTOS MÁS VENDIDOS</span>
+                <span>→</span>
+              </a>
+              <a
+                href="/#sucursales"
+                class="flex items-center justify-between pb-1 text-ink transition hover:text-acc"
+              >
+                <span>DIRECTORIO DE SUCURSALES</span>
+                <span>→</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Accesos Rápidos Admin (visible solo para ADMIN / RH) -->
+          <div
+            id="acc-admin-shortcuts"
+            class="hidden border border-line bg-[#191936] p-8 text-white"
+          >
+            <div class="cap-xs mb-4 text-acclite">GESTIÓN ADMINISTRATIVA</div>
+            <div class="flex flex-col gap-3 text-[12px] tracking-[0.08em]">
+              <a
+                href="/admin"
+                class="flex items-center justify-between border-b border-white/15 pb-2.5 text-white transition hover:text-acclite"
+              >
+                <span>SUBIR PRODUCTOS E INVENTARIO</span>
+                <span>↗</span>
+              </a>
+              <a
+                href="/admin/tiendas"
+                class="flex items-center justify-between border-b border-white/15 pb-2.5 text-white transition hover:text-acclite"
+              >
+                <span>ADMINISTRAR TIENDAS</span>
+                <span>↗</span>
+              </a>
+              <a
+                href="/admin/ventas"
+                class="flex items-center justify-between pb-1 text-white transition hover:text-acclite"
+              >
+                <span>VER PEDIDOS Y VENTAS</span>
+                <span>↗</span>
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ── 3. Historial de Compras del Cliente (GET /api/v1/ventas?clienteId=...) ── -->
+      <section
+        id="mis-compras"
+        class="border border-line bg-white p-8 sm:p-10"
+      >
+        <div class="mb-6 flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-end">
+          <div>
+            <div class="cap-xs mb-1 text-acc">TRANSACCIONES REGISTRADAS</div>
+            <h2 class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink">
+              MIS COMPRAS
+            </h2>
+          </div>
+          <span id="acc-orders-count" class="note text-muted">
+            0 compras registradas
+          </span>
+        </div>
+
+        <div
+          id="acc-orders-empty"
+          class="cap-tag py-12 text-center text-muted"
+        >
+          Aún no tienes compras registradas en tu historial.
+        </div>
+
+        <div id="acc-orders-table-wrap" class="hidden overflow-x-auto">
+          <table class="w-full border-collapse text-left text-[12px]">
+            <thead>
+              <tr class="border-b border-line text-muted">
+                <th class="cap-xs py-3 pr-4">FOLIO</th>
+                <th class="cap-xs py-3 px-4">PRODUCTO</th>
+                <th class="cap-xs py-3 px-4">SUCURSAL</th>
+                <th class="cap-xs py-3 px-4">CANT.</th>
+                <th class="cap-xs py-3 px-4">PRECIO UNIT.</th>
+                <th class="cap-xs py-3 px-4">TOTAL</th>
+                <th class="cap-xs py-3 px-4">FECHA</th>
+                <th class="cap-xs py-3 pl-4 text-right">DETALLE</th>
+              </tr>
+            </thead>
+            <tbody id="acc-orders-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Modal de Detalle de Recibo (GET /api/v1/ventas/{id}) -->
+    <div
+      id="receipt-modal"
+      class="fixed inset-0 z-[220] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+    >
+      <div class="flex w-[min(460px,100%)] flex-col gap-5 border border-line bg-white p-7">
+        <div class="flex items-center justify-between border-b border-line pb-3">
+          <span class="cap-xs text-acc">COMPROBANTE DE VENTA</span>
+          <button
+            id="receipt-close"
+            type="button"
+            class="cap cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="receipt-body" class="flex flex-col gap-3 text-[12px]"></div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
+  import { AuthApi } from "../../api/services/auth/AuthApi";
+  import { VentasApi } from "../../api/services/ventas/VentasApi";
+  import { isAdminOrRh } from "../../lib/authGuard";
+
+  const usuariosApi = new UsuariosApi();
+  const authApi = new AuthApi();
+  const ventasApi = new VentasApi();
+
+  const loadingBox = document.getElementById("account-loading");
+  const guestBox = document.getElementById("account-guest");
+  const contentBox = document.getElementById("account-content");
+
+  const fullnameEl = document.getElementById("acc-fullname");
+  const usernameSubEl = document.getElementById("acc-username-sub");
+  const statusBadgeEl = document.getElementById("acc-status-badge");
+  const rolesBadgeEl = document.getElementById("acc-roles-badge");
+  const adminBtnEl = document.getElementById("acc-admin-btn");
+  const nombreEl = document.getElementById("acc-nombre");
+  const apellidoEl = document.getElementById("acc-apellido");
+  const usernameEl = document.getElementById("acc-username");
+  const emailEl = document.getElementById("acc-email");
+  const edadEl = document.getElementById("acc-edad");
+  const rolesListEl = document.getElementById("acc-roles-list");
+  const idEl = document.getElementById("acc-id");
+  const logoutBtn = document.getElementById("acc-logout-btn");
+
+  const ordersCountEl = document.getElementById("acc-orders-count");
+  const ordersEmptyEl = document.getElementById("acc-orders-empty");
+  const ordersTableWrap = document.getElementById("acc-orders-table-wrap");
+  const ordersTbody = document.getElementById("acc-orders-tbody");
+
+  const receiptModal = document.getElementById("receipt-modal");
+  const receiptBody = document.getElementById("receipt-body");
+  const receiptClose = document.getElementById("receipt-close");
+
+  async function loadAccountProfile() {
+    try {
+      // 1. Consultar GET /api/v1/usuarios/perfil
+      const perfil = await usuariosApi.getMiPerfil();
+
+      // Sincronizar localStorage para el botón del Navbar
+      localStorage.setItem(
+        "auth_user",
+        JSON.stringify({
+          username: perfil.nombreDeUsuario,
+          roles: perfil.roles,
+          message: "Sesión activa",
+        })
+      );
+
+      document
+        .querySelectorAll("[data-open-login] span")
+        .forEach((span) => (span.textContent = perfil.nombreDeUsuario));
+
+      if (isAdminOrRh(perfil.roles)) {
+        adminBtnEl?.classList.remove("hidden");
+        adminBtnEl?.classList.add("inline-flex");
+        document.getElementById("acc-admin-shortcuts")?.classList.remove("hidden");
+        document.querySelectorAll("[data-admin-nav]").forEach((el) => {
+          el.classList.remove("hidden");
+          el.classList.add("inline-flex");
+        });
+      }
+
+      if (fullnameEl) {
+        fullnameEl.textContent =
+          `${perfil.nombre} ${perfil.apellido}`.toUpperCase();
+      }
+      if (usernameSubEl) {
+        usernameSubEl.textContent = `@${perfil.nombreDeUsuario} · ${perfil.email}`;
+      }
+      if (statusBadgeEl) {
+        statusBadgeEl.textContent = perfil.activo
+          ? "CUENTA ACTIVA"
+          : "CUENTA INACTIVA";
+      }
+      if (rolesBadgeEl) {
+        rolesBadgeEl.textContent = (perfil.roles || []).join(" · ");
+      }
+      if (nombreEl) nombreEl.textContent = perfil.nombre;
+      if (apellidoEl) apellidoEl.textContent = perfil.apellido;
+      if (usernameEl) usernameEl.textContent = `@${perfil.nombreDeUsuario}`;
+      if (emailEl) emailEl.textContent = perfil.email;
+      if (edadEl) edadEl.textContent = `${perfil.edad} años`;
+      if (idEl) idEl.textContent = perfil.id;
+
+      if (rolesListEl) {
+        rolesListEl.innerHTML = (perfil.roles || [])
+          .map(
+            (r) =>
+              `<span class="cap-xs border border-ink bg-ink px-2.5 py-1 text-white">${r}</span>`
+          )
+          .join("");
+      }
+
+      loadingBox?.classList.add("hidden");
+      contentBox?.classList.remove("hidden");
+      contentBox?.classList.add("flex");
+
+      // 2. Consultar historial de compras del cliente: GET /api/v1/ventas?clienteId={perfil.id}
+      try {
+        const ventas = await ventasApi.listVentas({ clienteId: perfil.id });
+        if (ordersCountEl) {
+          ordersCountEl.textContent = `${ventas.length} ${
+            ventas.length === 1 ? "compra registrada" : "compras registradas"
+          }`;
+        }
+        if (ventas.length > 0 && ordersTbody && ordersTableWrap && ordersEmptyEl) {
+          ordersEmptyEl.classList.add("hidden");
+          ordersTableWrap.classList.remove("hidden");
+          ordersTbody.innerHTML = ventas
+            .map((v) => {
+              const fecha = v.fechaVenta
+                ? new Date(v.fechaVenta).toLocaleString("es-SV", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "—";
+              return `
+                <tr class="border-b border-linesoft hover:bg-tint/25 transition">
+                  <td class="note py-3.5 pr-4 text-muted">${v.id.slice(0, 8)}...</td>
+                  <td class="py-3.5 px-4 font-medium text-ink">
+                    <a href="/Productos/${v.productoId}" class="hover:underline">${v.productoNombre}</a>
+                  </td>
+                  <td class="py-3.5 px-4 text-soft">${v.tiendaNombre}</td>
+                  <td class="py-3.5 px-4">${v.cantidad}</td>
+                  <td class="py-3.5 px-4">$${Number(v.precioUnitario).toFixed(2)}</td>
+                  <td class="py-3.5 px-4 font-medium text-ink">$${Number(v.totalPagado).toFixed(2)}</td>
+                  <td class="py-3.5 px-4 text-soft">${fecha}</td>
+                  <td class="py-3.5 pl-4 text-right">
+                    <button
+                      type="button"
+                      data-ver-venta="${v.id}"
+                      class="cap-xs link-u cursor-pointer text-acc"
+                    >
+                      Ver recibo
+                    </button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("");
+        }
+      } catch (err) {
+        console.error("Error al consultar historial de compras:", err);
+      }
+    } catch {
+      localStorage.removeItem("auth_user");
+      loadingBox?.classList.add("hidden");
+      guestBox?.classList.remove("hidden");
+      guestBox?.classList.add("flex");
+    }
+  }
+
+  // Consultar detalle individual de una venta: GET /api/v1/ventas/{id}
+  ordersTbody?.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "[data-ver-venta]"
+    ) as HTMLElement | null;
+    if (!btn) return;
+    const ventaId = btn.dataset.verVenta!;
+    try {
+      const v = await ventasApi.getVentaById(ventaId);
+      if (receiptBody && receiptModal) {
+        receiptBody.innerHTML = `
+          <div class="flex justify-between border-b border-linesoft py-2">
+            <span class="cap-xs text-muted">ID DE TRANSACCIÓN</span>
+            <span class="note text-ink">${v.id}</span>
+          </div>
+          <div class="flex justify-between border-b border-linesoft py-2">
+            <span class="cap-xs text-muted">CLIENTE</span>
+            <span>${v.clienteNombreCompleto}</span>
+          </div>
+          <div class="flex justify-between border-b border-linesoft py-2">
+            <span class="cap-xs text-muted">SUCURSAL</span>
+            <span>${v.tiendaNombre}</span>
+          </div>
+          <div class="flex justify-between border-b border-linesoft py-2">
+            <span class="cap-xs text-muted">PRODUCTO</span>
+            <span class="font-medium">${v.productoNombre}</span>
+          </div>
+          <div class="flex justify-between border-b border-linesoft py-2">
+            <span class="cap-xs text-muted">CANTIDAD × PRECIO UNITARIO</span>
+            <span>${v.cantidad} × $${Number(v.precioUnitario).toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between border-b border-linesoft py-2 text-[14px] font-medium">
+            <span class="cap-xs text-ink">TOTAL PAGADO</span>
+            <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between pt-1">
+            <span class="cap-xs text-muted">FECHA Y HORA</span>
+            <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+          </div>
+        `;
+        receiptModal.classList.add("on");
+      }
+    } catch {
+      alert("No se pudo cargar el detalle de la venta.");
+    }
+  });
+
+  receiptClose?.addEventListener("click", () =>
+    receiptModal?.classList.remove("on")
+  );
+  receiptModal?.addEventListener("click", (e) => {
+    if (e.target === receiptModal) receiptModal.classList.remove("on");
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignorar errores de red al cerrar sesión
+    }
+    localStorage.removeItem("auth_user");
+    window.location.href = "/user/Login";
+  });
+
+  loadAccountProfile();
+</script>

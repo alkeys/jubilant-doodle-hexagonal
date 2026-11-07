@@ -1,0 +1,375 @@
+---
+// src/pages/user/Login.astro
+export const prerender = false;
+
+import Layout from "../../layouts/Layout.astro";
+import { ProductosApi } from "../../api/services/productos/ProductosApi";
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+
+const productosApi = new ProductosApi();
+let productoEditorial: ProductoResponse | null = null;
+
+try {
+  const principales = await productosApi.getPrincipalesProductos(0, 4);
+  productoEditorial = principales[0] ?? null;
+} catch (e) {
+  console.error("Error al cargar imagen editorial en Login:", e);
+}
+
+const imgEditorial =
+  productoEditorial?.imagenes?.find((img) => img.esPrincipal)?.url ||
+  productoEditorial?.imagenes?.[0]?.url ||
+  "";
+---
+
+<Layout title="Acceso de Cuenta — NOBLE MUSE" heroHeader={false}>
+  <main class="mx-auto max-w-[1640px] px-5 pb-24 pt-28 sm:pt-36 lg:px-9">
+    <!-- Migas de pan estilo Noble Muse -->
+    <div class="mb-8 flex items-center justify-between border-b border-line pb-4">
+      <div class="cap-xs text-muted">
+        <a href="/" class="hover:text-ink transition">INICIO</a>
+        <span class="mx-2">/</span>
+        <span class="text-ink">MI CUENTA</span>
+      </div>
+      <span class="note text-muted">acceso seguro · sesión httponly</span>
+    </div>
+
+    <!-- Grid Editorial de 2 Columnas (Sin bordes redondeados, ángulos rectos) -->
+    <div class="grid grid-cols-1 border border-line bg-white lg:grid-cols-12">
+      <!-- ── Columna Izquierda: Editorial / Imagen de Campaña desde la API ── -->
+      <aside class="relative hidden flex-col justify-between overflow-hidden bg-[#191936] p-12 text-white lg:col-span-6 lg:flex min-h-[640px]">
+        {
+          imgEditorial && (
+            <img
+              src={imgEditorial}
+              alt={productoEditorial?.nombre ?? "Noble Muse Editorial"}
+              class="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-[1400ms] hover:scale-[1.03]"
+            />
+          )
+        }
+        <div class="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-ink/30"></div>
+
+        <!-- Encabezado Editorial Superior -->
+        <div class="relative z-10 flex items-center justify-between">
+          <span class="cap-xs tracking-[0.28em] text-white/85">
+            NOBLE MUSE · ARCHIVE
+          </span>
+          {
+            productoEditorial && (
+              <span class="note text-white/75">
+                ref. {productoEditorial.nombre.toLowerCase()}
+              </span>
+            )
+          }
+        </div>
+
+        <!-- Texto Central / Inferior de Campaña -->
+        <div class="relative z-10 flex flex-col gap-6">
+          <div class="cap-xs text-acclite">MEMBRESÍA &amp; GESTIÓN</div>
+          <h2 class="m-0 max-w-[18ch] text-[clamp(26px,2.6vw,38px)] font-normal leading-[1.18] tracking-[0.18em]">
+            MODA URBANA Y CALZADO MULTITIENDA
+          </h2>
+          <p class="m-0 max-w-[44ch] text-[12.5px] leading-[1.8] tracking-[0.04em] text-white/80">
+            Inicia sesión para gestionar pedidos, consultar disponibilidad en
+            tiempo real entre sucursales y administrar el catálogo de la cadena.
+          </p>
+
+          <div class="grid grid-cols-3 gap-4 border-t border-white/20 pt-6">
+            <div>
+              <div class="cap-xs text-acclite">01 · SUCURSALES</div>
+              <p class="mt-1.5 text-[11px] text-white/75">
+                Stock sincronizado por tienda física
+              </p>
+            </div>
+            <div>
+              <div class="cap-xs text-acclite">02 · CATÁLOGO</div>
+              <p class="mt-1.5 text-[11px] text-white/75">
+                Tallas y precios diferenciados
+              </p>
+            </div>
+            <div>
+              <div class="cap-xs text-acclite">03 · FAVORITOS</div>
+              <p class="mt-1.5 text-[11px] text-white/75">
+                Guarda tus piezas seleccionadas
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── Columna Derecha: Formulario de Inicio de Sesión ── -->
+      <section class="flex flex-col justify-center px-6 py-12 sm:px-14 lg:col-span-6 lg:px-20 lg:py-16">
+        <div class="mx-auto w-full max-w-[440px]">
+          <!-- Encabezado del Formulario -->
+          <div class="mb-10">
+            <div class="cap-xs mb-2.5 text-acc">AUTENTICACIÓN</div>
+            <h1 class="m-0 text-[26px] font-normal tracking-[0.22em] text-ink">
+              INICIAR SESIÓN
+            </h1>
+            <p class="mt-3 text-[12.5px] leading-relaxed tracking-[0.03em] text-soft">
+              Ingresa tus credenciales para acceder a tu cuenta o al panel de
+              administración.
+            </p>
+          </div>
+
+          <!-- Vista cuando el usuario YA tiene sesión iniciada -->
+          <div
+            id="session-active-box"
+            class="anim-fade mb-8 hidden flex-col gap-5 border border-line bg-tint/50 p-7"
+          >
+            <div class="flex items-center justify-between border-b border-line pb-3">
+              <span class="cap-xs text-acc">SESIÓN ACTIVA</span>
+              <span id="session-role" class="note text-muted"></span>
+            </div>
+            <div>
+              <div class="cap-xs text-muted">USUARIO CONECTADO</div>
+              <div
+                id="session-username"
+                class="mt-1 text-[18px] tracking-[0.14em] text-ink"
+              ></div>
+            </div>
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+              <a href="/user/account" class="btn-ink flex-1 py-3.5 text-center">
+                Ver mi perfil
+              </a>
+              <button
+                id="logout-btn"
+                type="button"
+                class="btn-ghost flex-1 py-3.5 text-ink"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+
+          <!-- Formulario de Login -->
+          <form id="login-form" class="flex flex-col gap-7">
+            <!-- Campo Usuario -->
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between">
+                <label for="username" class="cap-xs text-ink">
+                  USUARIO
+                </label>
+                <span class="note text-muted">requerido</span>
+              </div>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                autocomplete="username"
+                placeholder="ej. admin o correo registrado"
+                class="w-full border border-line bg-tint/20 px-4 py-3.5 text-[13px] tracking-[0.04em] text-ink outline-none transition placeholder:text-muted focus:border-ink focus:bg-white"
+              />
+            </div>
+
+            <!-- Campo Contraseña -->
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between">
+                <label for="password" class="cap-xs text-ink">
+                  CONTRASEÑA
+                </label>
+                <button
+                  type="button"
+                  id="toggle-pwd"
+                  class="note cursor-pointer text-muted hover:text-ink"
+                >
+                  mostrar
+                </button>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="••••••••"
+                class="w-full border border-line bg-tint/20 px-4 py-3.5 text-[13px] tracking-[0.08em] text-ink outline-none transition placeholder:text-muted focus:border-ink focus:bg-white"
+              />
+            </div>
+
+            <!-- Alerta de Estado (Error / Éxito) -->
+            <div
+              id="login-msg"
+              class="hidden border px-4 py-3 text-[11.5px] tracking-[0.05em]"
+            ></div>
+
+            <!-- Botón Principal -->
+            <button
+              id="login-btn"
+              type="submit"
+              class="btn-ink mt-1 w-full py-4"
+            >
+              Ingresar a la cuenta
+            </button>
+            <button
+              id="registrar-btn"
+              type="button"
+              class="btn-ghost mt-1 w-full py-4"
+            >
+              Registrarse
+            </button>
+          </form>
+
+          <!-- Pie del Formulario -->
+          <div class="mt-10 flex items-center justify-between border-t border-line pt-6">
+            <a
+              href="/"
+              class="cap link-u text-soft hover:text-ink"
+              style="letter-spacing:.18em"
+            >
+              ← Volver a la tienda
+            </a>
+            <a
+              href="/#sucursales"
+              class="cap text-muted hover:text-ink"
+              style="letter-spacing:.16em"
+            >
+              Ver sucursales
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { AuthApi } from "../../api/services/auth/AuthApi";
+  import type { LoginRequest } from "../../api/types/auth/LoginRequest";
+  import { isAdminOrRh } from "../../lib/authGuard";
+
+  const authApi = new AuthApi();
+
+  const form = document.getElementById("login-form") as HTMLFormElement | null;
+  const usernameInput = document.getElementById("username") as HTMLInputElement | null;
+  const passwordInput = document.getElementById("password") as HTMLInputElement | null;
+  const togglePwdBtn = document.getElementById("toggle-pwd");
+  const msgEl = document.getElementById("login-msg");
+  const submitBtn = document.getElementById("login-btn") as HTMLButtonElement | null;
+
+  const sessionBox = document.getElementById("session-active-box");
+  const sessionUsername = document.getElementById("session-username");
+  const sessionRole = document.getElementById("session-role");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  const registrarBtn = document.getElementById("registrar-btn");
+
+
+  function showMessage(text: string, type: "error" | "success") {
+    if (!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.classList.remove(
+      "hidden",
+      "border-red-400",
+      "bg-red-50/60",
+      "text-red-800",
+      "border-acc",
+      "bg-tint",
+      "text-ink"
+    );
+    if (type === "error") {
+      msgEl.classList.add("border-red-400", "bg-red-50/60", "text-red-800");
+    } else {
+      msgEl.classList.add("border-acc", "bg-tint", "text-ink");
+    }
+  }
+
+
+
+
+  registrarBtn?.addEventListener("click",()=>{
+    window.location.href = "/user/register";
+  })
+
+  // 1. Mostrar / Ocultar contraseña
+  togglePwdBtn?.addEventListener("click", () => {
+    if (!passwordInput) return;
+    const isPassword = passwordInput.type === "password";
+    passwordInput.type = isPassword ? "text" : "password";
+    togglePwdBtn.textContent = isPassword ? "ocultar" : "mostrar";
+  });
+
+  // 2. Verificar si ya existe una sesión activa en el servidor o localStorage
+  async function checkActiveSession() {
+    try {
+      const me = await authApi.me();
+      if (me && me.username) {
+        localStorage.setItem("auth_user", JSON.stringify(me));
+        if (sessionBox && sessionUsername && sessionRole && form) {
+          sessionUsername.textContent = me.username.toUpperCase();
+          sessionRole.textContent = (me.roles || []).join(" · ") || "USUARIO";
+          sessionBox.classList.remove("hidden");
+          sessionBox.classList.add("flex");
+        }
+      }
+    } catch {
+      // No hay sesión activa en el backend
+      localStorage.removeItem("auth_user");
+    }
+  }
+  checkActiveSession();
+
+  // 3. Cerrar sesión
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignorar si ya expiró
+    }
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_token");
+    window.location.reload();
+  });
+
+  // 4. Enviar formulario de Login
+  form?.addEventListener("submit", async (event: SubmitEvent) => {
+    event.preventDefault();
+
+    const username = usernameInput?.value.trim() ?? "";
+    const password = passwordInput?.value ?? "";
+    const payload: LoginRequest = { username, password };
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "AUTENTICANDO...";
+    }
+    msgEl?.classList.add("hidden");
+
+    try {
+      const response = await authApi.login(payload);
+      localStorage.setItem("auth_user", JSON.stringify(response));
+      if (response.token) {
+        localStorage.setItem("auth_token", response.token);
+      }
+
+      showMessage(
+        `SESIÓN INICIADA COMO ${response.username.toUpperCase()}. REDIRIGIENDO...`,
+        "success"
+      );
+
+      const params = new URLSearchParams(location.search);
+      const redirectParam = params.get("redirect");
+      const targetUrl =
+        redirectParam && redirectParam.startsWith("/")
+          ? redirectParam
+          : isAdminOrRh(response.roles)
+            ? "/admin"
+            : "/user/account";
+
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 650);
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message ||
+        "CREDENCIALES INVÁLIDAS. VERIFICA TU USUARIO Y CONTRASEÑA.";
+      showMessage(errorMsg.toUpperCase(), "error");
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Ingresar a la cuenta";
+      }
+    }
+  });
+</script>
