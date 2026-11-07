@@ -1,0 +1,450 @@
+---
+// src/pages/admin/usuarios.astro
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="Usuarios y Roles — Admin NOBLE MUSE"
+  section="usuarios"
+>
+  <section class="border border-line bg-white p-6 sm:p-8">
+    <div class="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-5 sm:flex-row sm:items-end">
+      <div>
+        <div class="cap-xs mb-1.5 text-acc">SEGURIDAD &amp; PERSONAL</div>
+        <h1 class="m-0 text-[22px] font-normal tracking-[0.2em] text-ink">
+          GESTIÓN DE USUARIOS Y ROLES
+        </h1>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Filtro por Rol (GET /api/v1/usuarios?rol=...) -->
+        <select
+          id="filter-rol"
+          class="cap border border-line bg-white px-3.5 py-3 text-ink"
+        >
+          <option value="">Todos los roles</option>
+          <option value="ADMIN">Rol: ADMIN</option>
+          <option value="RH">Rol: RH</option>
+          <option value="CLIENTE">Rol: CLIENTE</option>
+        </select>
+
+        <button id="btn-new-user" type="button" class="btn-ink px-6 py-3.5">
+          + Nuevo Usuario
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabla de Usuarios -->
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-left text-[12px]">
+        <thead>
+          <tr class="border-b border-line text-muted">
+            <th class="cap-xs py-3 pr-4">USUARIO</th>
+            <th class="cap-xs py-3 px-4">NOMBRE COMPLETO</th>
+            <th class="cap-xs py-3 px-4">CORREO</th>
+            <th class="cap-xs py-3 px-4">EDAD</th>
+            <th class="cap-xs py-3 px-4">ROLES</th>
+            <th class="cap-xs py-3 px-4">ESTADO</th>
+            <th class="cap-xs py-3 pl-4 text-right">ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Modal 1: Crear / Editar Usuario (POST y PUT /api/v1/usuarios) ── -->
+  <div
+    id="modal-user"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="max-h-[90vh] w-[min(560px,100%)] overflow-y-auto border border-line bg-white p-7 sm:p-9">
+      <div class="mb-6 flex items-center justify-between border-b border-line pb-4">
+        <span id="modal-user-title" class="cap-tag text-ink">
+          NUEVO USUARIO
+        </span>
+        <button
+          type="button"
+          data-close-modal="modal-user"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <form id="form-user" class="flex flex-col gap-5">
+        <input id="usr-id" type="hidden" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">NOMBRE</label>
+            <input
+              id="usr-nombre"
+              type="text"
+              required
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">APELLIDO</label>
+            <input
+              id="usr-apellido"
+              type="text"
+              required
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">NOMBRE DE USUARIO</label>
+            <input
+              id="usr-username"
+              type="text"
+              required
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">EDAD</label>
+            <input
+              id="usr-edad"
+              type="number"
+              min="0"
+              required
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">CORREO ELECTRÓNICO</label>
+          <input
+            id="usr-email"
+            type="email"
+            required
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">
+            CONTRASEÑA <span id="usr-pwd-hint" class="note text-muted"></span>
+          </label>
+          <input
+            id="usr-password"
+            type="password"
+            placeholder="••••••••"
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <label class="flex cursor-pointer items-center gap-2.5">
+          <input id="usr-activo" type="checkbox" checked class="accent-ink" />
+          <span class="cap-xs text-ink">USUARIO ACTIVO</span>
+        </label>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            data-close-modal="modal-user"
+            class="btn-ghost px-6 py-3 text-ink"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn-ink px-7 py-3">
+            Guardar Usuario
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal 2: Asignar Roles (PATCH /api/v1/usuarios/{id}/roles) ── -->
+  <div
+    id="modal-roles"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="w-[min(440px,100%)] border border-line bg-white p-7 sm:p-9">
+      <div class="mb-5 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs text-acc">PERMISOS RBAC</div>
+          <h3
+            id="roles-user-name"
+            class="m-0 mt-1 text-[16px] font-normal tracking-[0.16em]"
+          ></h3>
+        </div>
+        <button
+          type="button"
+          data-close-modal="modal-roles"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <form id="form-roles" class="flex flex-col gap-5">
+        <input id="roles-usr-id" type="hidden" />
+
+        <div class="flex flex-col gap-3 border border-linesoft bg-tint/25 p-4">
+          <label class="flex cursor-pointer items-center gap-3 text-[12px]">
+            <input type="checkbox" name="roleCheck" value="ADMIN" class="accent-ink" />
+            <span class="cap-tag">ADMIN</span>
+            <span class="note text-muted">— Control total del sistema</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-3 text-[12px]">
+            <input type="checkbox" name="roleCheck" value="RH" class="accent-ink" />
+            <span class="cap-tag">RH</span>
+            <span class="note text-muted">— Consulta de personal y usuarios</span>
+          </label>
+          <label class="flex cursor-pointer items-center gap-3 text-[12px]">
+            <input type="checkbox" name="roleCheck" value="CLIENTE" class="accent-ink" />
+            <span class="cap-tag">CLIENTE</span>
+            <span class="note text-muted">— Compras y perfil en tienda</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-ink py-3.5">
+          Actualizar Roles del Usuario
+        </button>
+      </form>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
+  import type { UsuarioResponse } from "../../api/types/usuarios/UsuarioResponse";
+  import { normalizeRole } from "../../lib/authGuard";
+
+  const usuariosApi = new UsuariosApi();
+  let usuarios: UsuarioResponse[] = [];
+
+  const tbody = document.getElementById("users-tbody")!;
+  const filterRol = document.getElementById("filter-rol") as HTMLSelectElement;
+  const notify = (msg: string) => (window as any).adminToast?.(msg);
+
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = (btn as HTMLElement).dataset.closeModal!;
+      document.getElementById(id)?.classList.remove("on");
+    });
+  });
+
+  async function loadUsuarios() {
+    const rol = filterRol.value || undefined;
+    usuarios = await usuariosApi.getUsuariosFiltradosPorRol(rol);
+
+    if (usuarios.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="cap-tag py-12 text-center text-muted">No se encontraron usuarios para ese filtro.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = usuarios
+      .map(
+        (u) => `
+        <tr class="border-b border-linesoft hover:bg-tint/20 transition">
+          <td class="py-3.5 pr-4 font-medium text-ink">@${u.nombreDeUsuario}</td>
+          <td class="py-3.5 px-4">${u.nombre} ${u.apellido}</td>
+          <td class="py-3.5 px-4 text-soft">${u.email}</td>
+          <td class="py-3.5 px-4">${u.edad}</td>
+          <td class="py-3.5 px-4">
+            <div class="flex flex-wrap gap-1">
+              ${(u.roles || [])
+                .map(
+                  (r) =>
+                    `<span class="cap-xs border border-ink px-2 py-0.5 text-ink">${r}</span>`
+                )
+                .join("")}
+            </div>
+          </td>
+          <td class="py-3.5 px-4">
+            <span class="cap-xs px-2 py-1 ${
+              u.activo
+                ? "bg-ink text-white"
+                : "border border-line bg-tint text-muted"
+            }">
+              ${u.activo ? "ACTIVO" : "INACTIVO"}
+            </span>
+          </td>
+          <td class="py-3.5 pl-4 text-right whitespace-nowrap">
+            <button type="button" data-roles-usr="${u.id}" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer mr-1">
+              Roles
+            </button>
+            <button type="button" data-edit-usr="${u.id}" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer mr-1">
+              Editar
+            </button>
+            <button type="button" data-del-usr="${u.id}" class="cap-xs border border-red-300 text-red-700 px-2.5 py-1.5 hover:bg-red-600 hover:text-white cursor-pointer">
+              Borrar
+            </button>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+  }
+
+  filterRol.addEventListener("change", loadUsuarios);
+
+  document.getElementById("btn-new-user")?.addEventListener("click", () => {
+    (document.getElementById("form-user") as HTMLFormElement).reset();
+    (document.getElementById("usr-id") as HTMLInputElement).value = "";
+    (document.getElementById("usr-password") as HTMLInputElement).required = true;
+    document.getElementById("usr-pwd-hint")!.textContent = "(requerida)";
+    document.getElementById("modal-user-title")!.textContent = "NUEVO USUARIO";
+    document.getElementById("modal-user")?.classList.add("on");
+  });
+
+  document
+    .getElementById("form-user")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = (document.getElementById("usr-id") as HTMLInputElement).value;
+      const nombre = (
+        document.getElementById("usr-nombre") as HTMLInputElement
+      ).value.trim();
+      const apellido = (
+        document.getElementById("usr-apellido") as HTMLInputElement
+      ).value.trim();
+      const nombreDeUsuario = (
+        document.getElementById("usr-username") as HTMLInputElement
+      ).value.trim();
+      const edad = Number(
+        (document.getElementById("usr-edad") as HTMLInputElement).value
+      );
+      const email = (
+        document.getElementById("usr-email") as HTMLInputElement
+      ).value.trim();
+      const password = (
+        document.getElementById("usr-password") as HTMLInputElement
+      ).value;
+      const activo = (
+        document.getElementById("usr-activo") as HTMLInputElement
+      ).checked;
+
+      try {
+        if (id) {
+          await usuariosApi.updateUser(id, {
+            nombre,
+            apellido,
+            nombreDeUsuario,
+            edad,
+            email,
+            password: password || "sinCambio123",
+            activo,
+          });
+          notify("Usuario actualizado correctamente");
+        } else {
+          await usuariosApi.createUser({
+            nombre,
+            apellido,
+            nombreDeUsuario,
+            edad,
+            email,
+            password,
+          });
+          notify("Usuario creado exitosamente");
+        }
+        document.getElementById("modal-user")?.classList.remove("on");
+        await loadUsuarios();
+      } catch (err: any) {
+        notify(err?.response?.data?.message || "Error al guardar usuario");
+      }
+    });
+
+  // Guardar Roles (PATCH /api/v1/usuarios/{id}/roles)
+  document
+    .getElementById("form-roles")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = (document.getElementById("roles-usr-id") as HTMLInputElement)
+        .value;
+      const checks = [
+        ...document.querySelectorAll<HTMLInputElement>(
+          'input[name="roleCheck"]:checked'
+        ),
+      ].map((c) => c.value);
+
+      if (checks.length === 0) {
+        notify("Selecciona al menos un rol");
+        return;
+      }
+
+      try {
+        await usuariosApi.assignRoles(id, { roles: checks });
+        notify("Roles actualizados");
+        document.getElementById("modal-roles")?.classList.remove("on");
+        await loadUsuarios();
+      } catch (err: any) {
+        notify(err?.response?.data?.message || "Error al asignar roles");
+      }
+    });
+
+  tbody.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+
+    const rolesBtn = target.closest("[data-roles-usr]") as HTMLElement | null;
+    if (rolesBtn) {
+      const u = await usuariosApi.getUserById(rolesBtn.dataset.rolesUsr!);
+      (document.getElementById("roles-usr-id") as HTMLInputElement).value = u.id;
+      document.getElementById("roles-user-name")!.textContent =
+        `@${u.nombreDeUsuario}`;
+      const currentNorm = (u.roles || []).map(normalizeRole);
+      document
+        .querySelectorAll<HTMLInputElement>('input[name="roleCheck"]')
+        .forEach((chk) => {
+          chk.checked = currentNorm.includes(normalizeRole(chk.value));
+        });
+      document.getElementById("modal-roles")?.classList.add("on");
+      return;
+    }
+
+    const editBtn = target.closest("[data-edit-usr]") as HTMLElement | null;
+    if (editBtn) {
+      const u = await usuariosApi.getUserById(editBtn.dataset.editUsr!);
+      (document.getElementById("usr-id") as HTMLInputElement).value = u.id;
+      (document.getElementById("usr-nombre") as HTMLInputElement).value =
+        u.nombre;
+      (document.getElementById("usr-apellido") as HTMLInputElement).value =
+        u.apellido;
+      (document.getElementById("usr-username") as HTMLInputElement).value =
+        u.nombreDeUsuario;
+      (document.getElementById("usr-edad") as HTMLInputElement).value = String(
+        u.edad
+      );
+      (document.getElementById("usr-email") as HTMLInputElement).value =
+        u.email;
+      (document.getElementById("usr-password") as HTMLInputElement).value = "";
+      (document.getElementById("usr-password") as HTMLInputElement).required =
+        true;
+      document.getElementById("usr-pwd-hint")!.textContent =
+        "(ingresa nueva o actual para confirmar)";
+      (document.getElementById("usr-activo") as HTMLInputElement).checked =
+        u.activo;
+      document.getElementById("modal-user-title")!.textContent =
+        "EDITAR USUARIO";
+      document.getElementById("modal-user")?.classList.add("on");
+      return;
+    }
+
+    const delBtn = target.closest("[data-del-usr]") as HTMLElement | null;
+    if (delBtn) {
+      if (!confirm("¿Eliminar este usuario?")) return;
+      try {
+        await usuariosApi.deleteUser(delBtn.dataset.delUsr!);
+        notify("Usuario eliminado");
+        await loadUsuarios();
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "No se pudo eliminar el usuario"
+        );
+      }
+    }
+  });
+
+  loadUsuarios();
+</script>
+

@@ -1,0 +1,354 @@
+---
+// src/pages/admin/ventas.astro
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="Ventas y Reportes — Admin NOBLE MUSE"
+  section="ventas"
+>
+  <!-- ── 1. Ranking Analítico de Productos Más Vendidos (/api/v1/ventas/top-productos) ── -->
+  <section class="mb-10 border border-line bg-white p-6 sm:p-8">
+    <div class="mb-6 flex items-end justify-between border-b border-line pb-4">
+      <div>
+        <div class="cap-xs mb-1 text-acc">REPORTE ANALÍTICO</div>
+        <h2 class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink">
+          TOP PRODUCTOS MÁS VENDIDOS E INGRESOS
+        </h2>
+      </div>
+      <span id="ventas-total-revenue" class="cap-tag text-acc">
+        RECAUDACIÓN TOTAL: $0.00
+      </span>
+    </div>
+
+    <div
+      id="top-ventas-grid"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+    ></div>
+  </section>
+
+  <!-- ── 2. Registro Manual de Venta + Historial Global (/api/v1/ventas) ── -->
+  <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+    <!-- Formulario Registrar Venta en Mostrador (4 columnas) -->
+    <section class="border border-line bg-white p-7 lg:col-span-4">
+      <div class="mb-6 border-b border-line pb-4">
+        <div class="cap-xs mb-1 text-acc">PUNTO DE VENTA (POS)</div>
+        <h2 class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink">
+          REGISTRAR NUEVA VENTA
+        </h2>
+      </div>
+
+      <form id="form-venta" class="flex flex-col gap-5">
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">CLIENTE</label>
+          <select
+            id="venta-cliente"
+            required
+            class="border border-line bg-white px-3.5 py-2.5 text-[12px]"
+          ></select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">SUCURSAL</label>
+          <select
+            id="venta-tienda"
+            required
+            class="border border-line bg-white px-3.5 py-2.5 text-[12px]"
+          ></select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">PRODUCTO</label>
+          <select
+            id="venta-producto"
+            required
+            class="border border-line bg-white px-3.5 py-2.5 text-[12px]"
+          ></select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">CANTIDAD</label>
+          <input
+            id="venta-cantidad"
+            type="number"
+            min="1"
+            value="1"
+            required
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <button type="submit" class="btn-ink py-3.5">
+          Registrar Venta y Descontar Stock
+        </button>
+      </form>
+    </section>
+
+    <!-- Historial Global de Ventas (8 columnas) -->
+    <section class="border border-line bg-white p-7 lg:col-span-8">
+      <div class="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-4 sm:flex-row sm:items-end">
+        <div>
+          <div class="cap-xs mb-1 text-muted">TRANSACCIONES</div>
+          <h1 class="m-0 text-[20px] font-normal tracking-[0.2em] text-ink">
+            HISTORIAL DE VENTAS
+          </h1>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <select
+            id="filter-venta-cliente"
+            class="cap border border-line bg-white px-3 py-2 text-ink"
+          >
+            <option value="">Todos los clientes</option>
+          </select>
+          <select
+            id="filter-venta-producto"
+            class="cap border border-line bg-white px-3 py-2 text-ink"
+          >
+            <option value="">Todos los productos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left text-[12px]">
+          <thead>
+            <tr class="border-b border-line text-muted">
+              <th class="cap-xs py-3 pr-3">FOLIO</th>
+              <th class="cap-xs py-3 px-3">CLIENTE</th>
+              <th class="cap-xs py-3 px-3">PRODUCTO</th>
+              <th class="cap-xs py-3 px-3">SUCURSAL</th>
+              <th class="cap-xs py-3 px-3">CANT.</th>
+              <th class="cap-xs py-3 px-3">TOTAL</th>
+              <th class="cap-xs py-3 pl-3 text-right">RECIBO</th>
+            </tr>
+          </thead>
+          <tbody id="ventas-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal Detalle de Venta (GET /api/v1/ventas/{id}) -->
+  <div
+    id="modal-venta-detail"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="w-[min(460px,100%)] border border-line bg-white p-7">
+      <div class="mb-4 flex items-center justify-between border-b border-line pb-3">
+        <span class="cap-xs text-acc">DETALLE DE TRANSACCIÓN</span>
+        <button
+          id="close-venta-detail"
+          type="button"
+          class="cap cursor-pointer"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div id="venta-detail-body" class="flex flex-col gap-3 text-[12px]"></div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { VentasApi } from "../../api/services/ventas/VentasApi";
+  import { ProductosApi } from "../../api/services/productos/ProductosApi";
+  import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
+  import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
+
+  const ventasApi = new VentasApi();
+  const productosApi = new ProductosApi();
+  const tiendasApi = new TiendasApi();
+  const usuariosApi = new UsuariosApi();
+
+  const topGrid = document.getElementById("top-ventas-grid")!;
+  const revenueEl = document.getElementById("ventas-total-revenue")!;
+  const tbody = document.getElementById("ventas-tbody")!;
+
+  const selCliente = document.getElementById(
+    "venta-cliente"
+  ) as HTMLSelectElement;
+  const selTienda = document.getElementById("venta-tienda") as HTMLSelectElement;
+  const selProducto = document.getElementById(
+    "venta-producto"
+  ) as HTMLSelectElement;
+  const filterCliente = document.getElementById(
+    "filter-venta-cliente"
+  ) as HTMLSelectElement;
+  const filterProducto = document.getElementById(
+    "filter-venta-producto"
+  ) as HTMLSelectElement;
+
+  const notify = (msg: string) => (window as any).adminToast?.(msg);
+
+  async function initData() {
+    const [productos, tiendas, usuarios] = await Promise.all([
+      productosApi.listProductos({ incluirInactivos: false }),
+      tiendasApi.listTiendasActivas(),
+      usuariosApi.getUsuariosFiltradosPorRol().catch(() => []),
+    ]);
+
+    const userOpts = usuarios
+      .map(
+        (u) =>
+          `<option value="${u.id}">${u.nombre} ${u.apellido} (@${u.nombreDeUsuario})</option>`
+      )
+      .join("");
+    selCliente.innerHTML = userOpts;
+    filterCliente.innerHTML =
+      `<option value="">Todos los clientes</option>` + userOpts;
+
+    selTienda.innerHTML = tiendas
+      .map((t) => `<option value="${t.id}">${t.nombre}</option>`)
+      .join("");
+
+    const prodOpts = productos
+      .map((p) => `<option value="${p.id}">${p.nombre}</option>`)
+      .join("");
+    selProducto.innerHTML = prodOpts;
+    filterProducto.innerHTML =
+      `<option value="">Todos los productos</option>` + prodOpts;
+
+    await Promise.all([loadTopVentas(), loadVentas()]);
+  }
+
+  async function loadTopVentas() {
+    const top = await ventasApi.getProductosMasVendidos(8);
+    topGrid.innerHTML = top
+      .map(
+        (t, idx) => `
+        <div class="border border-line bg-tint/25 p-4 flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <span class="cap-xs text-acc">#${idx + 1} TOP VENTAS</span>
+            <span class="note text-muted">${t.totalCantidadVendida} u.</span>
+          </div>
+          <div class="font-medium text-[13px] text-ink truncate">${t.productoNombre}</div>
+          <div class="text-[12px] text-soft">Recaudado: <strong class="text-ink">$${Number(
+            t.montoTotalRecaudado
+          ).toFixed(2)}</strong></div>
+        </div>
+      `
+      )
+      .join("");
+  }
+
+  async function loadVentas() {
+    const clienteId = filterCliente.value || undefined;
+    const productoId = filterProducto.value || undefined;
+    const ventas = await ventasApi.listVentas({ clienteId, productoId });
+
+    const totalRevenue = ventas.reduce(
+      (acc, v) => acc + Number(v.totalPagado || 0),
+      0
+    );
+    revenueEl.textContent = `RECAUDACIÓN FILTRADA: $${totalRevenue.toFixed(2)}`;
+
+    if (ventas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="cap-tag py-12 text-center text-muted">No hay ventas registradas para estos filtros.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ventas
+      .map(
+        (v) => `
+        <tr class="border-b border-linesoft hover:bg-tint/20 transition">
+          <td class="note py-3.5 pr-3 text-muted">${v.id.slice(0, 8)}</td>
+          <td class="py-3.5 px-3">${v.clienteNombreCompleto}</td>
+          <td class="py-3.5 px-3 font-medium text-ink">${v.productoNombre}</td>
+          <td class="py-3.5 px-3 text-soft">${v.tiendaNombre}</td>
+          <td class="py-3.5 px-3">${v.cantidad}</td>
+          <td class="py-3.5 px-3 font-medium text-ink">$${Number(
+            v.totalPagado
+          ).toFixed(2)}</td>
+          <td class="py-3.5 pl-3 text-right">
+            <button type="button" data-ver-venta="${v.id}" class="cap-xs link-u text-acc cursor-pointer">
+              Ver detalle
+            </button>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+  }
+
+  filterCliente.addEventListener("change", loadVentas);
+  filterProducto.addEventListener("change", loadVentas);
+
+  document
+    .getElementById("form-venta")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const clienteId = selCliente.value;
+      const tiendaId = selTienda.value;
+      const productoId = selProducto.value;
+      const cantidad = Number(
+        (document.getElementById("venta-cantidad") as HTMLInputElement).value
+      );
+
+      try {
+        await ventasApi.registrarVenta({
+          clienteId,
+          tiendaId,
+          productoId,
+          cantidad,
+        });
+        notify("Venta registrada y stock descontado");
+        await Promise.all([loadTopVentas(), loadVentas()]);
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message ||
+            "No se pudo registrar la venta (verifica stock en esa sucursal)"
+        );
+      }
+    });
+
+  const detailModal = document.getElementById("modal-venta-detail")!;
+  const detailBody = document.getElementById("venta-detail-body")!;
+  document
+    .getElementById("close-venta-detail")
+    ?.addEventListener("click", () => detailModal.classList.remove("on"));
+
+  tbody.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "[data-ver-venta]"
+    ) as HTMLElement | null;
+    if (!btn) return;
+    const v = await ventasApi.getVentaById(btn.dataset.verVenta!);
+    detailBody.innerHTML = `
+      <div class="flex justify-between border-b border-linesoft py-2">
+        <span class="cap-xs text-muted">FOLIO UUID</span>
+        <span class="note text-ink">${v.id}</span>
+      </div>
+      <div class="flex justify-between border-b border-linesoft py-2">
+        <span class="cap-xs text-muted">CLIENTE</span>
+        <span>${v.clienteNombreCompleto}</span>
+      </div>
+      <div class="flex justify-between border-b border-linesoft py-2">
+        <span class="cap-xs text-muted">SUCURSAL</span>
+        <span>${v.tiendaNombre}</span>
+      </div>
+      <div class="flex justify-between border-b border-linesoft py-2">
+        <span class="cap-xs text-muted">PRODUCTO</span>
+        <span class="font-medium">${v.productoNombre}</span>
+      </div>
+      <div class="flex justify-between border-b border-linesoft py-2">
+        <span class="cap-xs text-muted">CANTIDAD × PRECIO UNIT.</span>
+        <span>${v.cantidad} × $${Number(v.precioUnitario).toFixed(2)}</span>
+      </div>
+      <div class="flex justify-between border-b border-linesoft py-2 font-medium">
+        <span class="cap-xs text-ink">TOTAL PAGADO</span>
+        <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+      </div>
+      <div class="flex justify-between pt-1">
+        <span class="cap-xs text-muted">FECHA</span>
+        <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+      </div>
+    `;
+    detailModal.classList.add("on");
+  });
+
+  initData();
+</script>
+

@@ -1,0 +1,425 @@
+---
+// src/pages/admin/tiendas.astro
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="Administrar Tiendas y Sucursales — Admin NOBLE MUSE"
+  section="tiendas"
+>
+  <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+    <!-- ── Formulario Crear / Editar Sucursal (4 columnas) ── -->
+    <section class="border border-line bg-white p-7 lg:col-span-4">
+      <div class="mb-6 border-b border-line pb-4">
+        <div class="cap-xs mb-1 text-acc">CADENA COMERCIAL</div>
+        <h2
+          id="tienda-form-title"
+          class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink"
+        >
+          NUEVA SUCURSAL
+        </h2>
+      </div>
+
+      <form id="form-tienda" class="flex flex-col gap-5">
+        <input id="tienda-id" type="hidden" />
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">NOMBRE DE LA SUCURSAL</label>
+          <input
+            id="tienda-nombre"
+            type="text"
+            required
+            placeholder="ej. Boutique Centro Histórico"
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">DIRECCIÓN FÍSICA</label>
+          <input
+            id="tienda-direccion"
+            type="text"
+            required
+            placeholder="ej. Av. Principal #102, Centro"
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">DESCRIPCIÓN</label>
+          <textarea
+            id="tienda-descripcion"
+            rows="3"
+            required
+            placeholder="Horarios, especialidad o referencia..."
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="btn-ink flex-1 py-3.5">
+            Guardar Sucursal
+          </button>
+          <button
+            id="tienda-cancel-btn"
+            type="button"
+            class="btn-ghost hidden px-4 py-3.5 text-ink"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Listado de Sucursales (8 columnas) ── -->
+    <section class="border border-line bg-white p-7 lg:col-span-8">
+      <div class="mb-6 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs mb-1 text-muted">PUNTOS DE VENTA</div>
+          <h1 class="m-0 text-[20px] font-normal tracking-[0.2em] text-ink">
+            ADMINISTRACIÓN DE TIENDAS
+          </h1>
+        </div>
+        <span id="tienda-count" class="note text-muted">0 sucursales</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left text-[12px]">
+          <thead>
+            <tr class="border-b border-line text-muted">
+              <th class="cap-xs py-3 pr-4">SUCURSAL</th>
+              <th class="cap-xs py-3 px-4">DIRECCIÓN</th>
+              <th class="cap-xs py-3 px-4">DESCRIPCIÓN</th>
+              <th class="cap-xs py-3 pl-4 text-right">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="tienda-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Ventana Modal: Inventario de Productos en una Sucursal ── -->
+  <div
+    id="modal-store-stock"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="max-h-[90vh] w-[min(700px,100%)] overflow-y-auto border border-line bg-white p-7 sm:p-9">
+      <div class="mb-5 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs text-acc">INVENTARIO DE SUCURSAL</div>
+          <h3
+            id="store-modal-title"
+            class="m-0 mt-1 text-[18px] font-normal tracking-[0.16em]"
+          ></h3>
+        </div>
+        <button
+          id="close-store-modal"
+          type="button"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <!-- Productos actuales en esta tienda -->
+      <div id="store-products-list" class="mb-6 flex flex-col gap-2"></div>
+
+      <!-- Asignar nuevo producto a esta tienda -->
+      <form
+        id="form-assign-to-store"
+        class="flex flex-col gap-4 border-t border-line bg-tint/30 p-5"
+      >
+        <input id="assign-store-id" type="hidden" />
+        <div class="cap-xs text-ink">
+          AGREGAR O ACTUALIZAR PRODUCTO EN ESTA SUCURSAL
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">PRODUCTO</label>
+            <select
+              id="assign-prod-id"
+              required
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            ></select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">PRECIO EN SUCURSAL ($)</label>
+            <input
+              id="assign-precio"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              placeholder="49.99"
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">STOCK (UNIDADES)</label>
+            <input
+              id="assign-stock"
+              type="number"
+              min="0"
+              required
+              placeholder="25"
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            />
+          </div>
+        </div>
+
+        <button type="submit" class="btn-ink py-3">
+          Asignar Producto a esta Sucursal
+        </button>
+      </form>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
+  import { ProductosApi } from "../../api/services/productos/ProductosApi";
+  import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+  const tiendasApi = new TiendasApi();
+  const productosApi = new ProductosApi();
+  let tiendas: TiendaResponse[] = [];
+
+  const form = document.getElementById("form-tienda") as HTMLFormElement;
+  const idInput = document.getElementById("tienda-id") as HTMLInputElement;
+  const nombreInput = document.getElementById(
+    "tienda-nombre"
+  ) as HTMLInputElement;
+  const dirInput = document.getElementById(
+    "tienda-direccion"
+  ) as HTMLInputElement;
+  const descInput = document.getElementById(
+    "tienda-descripcion"
+  ) as HTMLTextAreaElement;
+  const formTitle = document.getElementById("tienda-form-title")!;
+  const cancelBtn = document.getElementById("tienda-cancel-btn")!;
+  const tbody = document.getElementById("tienda-tbody")!;
+  const countEl = document.getElementById("tienda-count")!;
+
+  const storeModal = document.getElementById("modal-store-stock")!;
+  const storeModalTitle = document.getElementById("store-modal-title")!;
+  const storeProductsList = document.getElementById("store-products-list")!;
+  const assignStoreIdInput = document.getElementById(
+    "assign-store-id"
+  ) as HTMLInputElement;
+  const assignProdSelect = document.getElementById(
+    "assign-prod-id"
+  ) as HTMLSelectElement;
+
+  const notify = (msg: string) => (window as any).adminToast?.(msg);
+
+  function resetForm() {
+    form.reset();
+    idInput.value = "";
+    formTitle.textContent = "NUEVA SUCURSAL";
+    cancelBtn.classList.add("hidden");
+  }
+
+  cancelBtn.addEventListener("click", resetForm);
+  document
+    .getElementById("close-store-modal")
+    ?.addEventListener("click", () => storeModal.classList.remove("on"));
+
+  async function loadTiendas() {
+    const [tds, prods] = await Promise.all([
+      tiendasApi.listTiendasActivas(),
+      productosApi.listProductos({ incluirInactivos: false }),
+    ]);
+    tiendas = tds;
+    countEl.textContent = `${tiendas.length} sucursales`;
+
+    assignProdSelect.innerHTML = prods
+      .map((p) => `<option value="${p.id}">${p.nombre}</option>`)
+      .join("");
+
+    tbody.innerHTML = tiendas
+      .map(
+        (t) => `
+        <tr class="border-b border-linesoft hover:bg-tint/20 transition">
+          <td class="py-3.5 pr-4 font-medium text-ink">${t.nombre}</td>
+          <td class="py-3.5 px-4 text-ink">${t.direccion || "—"}</td>
+          <td class="py-3.5 px-4 text-soft">${t.descripcion || "—"}</td>
+          <td class="py-3.5 pl-4 text-right whitespace-nowrap">
+            <button type="button" data-stock-tienda="${
+              t.id
+            }" class="cap-xs border border-ink bg-ink text-white px-2.5 py-1.5 hover:opacity-85 cursor-pointer mr-1.5">
+              Ver Inventario
+            </button>
+            <button type="button" data-edit-tienda="${
+              t.id
+            }" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer mr-1.5">
+              Editar
+            </button>
+            <button type="button" data-del-tienda="${
+              t.id
+            }" class="cap-xs border border-red-300 text-red-700 px-2.5 py-1.5 hover:bg-red-600 hover:text-white cursor-pointer">
+              Dar de baja
+            </button>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+  }
+
+  async function openStoreInventoryModal(tiendaId: string) {
+    const tienda = tiendas.find((t) => t.id === tiendaId);
+    if (!tienda) return;
+    assignStoreIdInput.value = tienda.id;
+    storeModalTitle.textContent = tienda.nombre.toUpperCase();
+
+    const prodsEnTienda = await productosApi.listProductos({
+      tiendaId: tienda.id,
+      incluirInactivos: true,
+    });
+
+    if (prodsEnTienda.length === 0) {
+      storeProductsList.innerHTML = `<div class="cap-xs py-6 text-center text-muted">Esta sucursal aún no tiene productos asignados.</div>`;
+    } else {
+      storeProductsList.innerHTML = prodsEnTienda
+        .map((p) => {
+          const inv = (p.tiendas || []).find((x) => x.tiendaId === tienda.id);
+          const precio = inv?.precio ?? p.precio ?? 0;
+          const stock = inv?.stock ?? p.stock ?? 0;
+          return `
+            <div class="flex items-center justify-between border border-line px-4 py-3 text-[12px]">
+              <div>
+                <div class="font-medium text-ink">${p.nombre}</div>
+                <div class="note text-muted">Tallas: ${
+                  p.talla || "ÚNICA"
+                } · Precio: $${precio.toFixed(2)} · Stock: ${stock} u.</div>
+              </div>
+              <button
+                type="button"
+                data-rm-store-prod="${p.id}"
+                data-rm-store-id="${tienda.id}"
+                class="cap-xs text-red-600 hover:underline cursor-pointer"
+              >
+                Quitar
+              </button>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    storeModal.classList.add("on");
+  }
+
+  document
+    .getElementById("form-assign-to-store")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const tiendaId = assignStoreIdInput.value;
+      const prodId = assignProdSelect.value;
+      const precio = Number(
+        (document.getElementById("assign-precio") as HTMLInputElement).value
+      );
+      const stock = Number(
+        (document.getElementById("assign-stock") as HTMLInputElement).value
+      );
+
+      try {
+        await productosApi.asignarInventario(prodId, {
+          tiendaId,
+          precio,
+          stock,
+          activo: true,
+        });
+        notify("Producto asignado a la sucursal");
+        await openStoreInventoryModal(tiendaId);
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "Error al asignar producto a sucursal"
+        );
+      }
+    });
+
+  storeProductsList.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "[data-rm-store-prod]"
+    ) as HTMLElement | null;
+    if (!btn) return;
+    const prodId = btn.dataset.rmStoreProd!;
+    const tiendaId = btn.dataset.rmStoreId!;
+    try {
+      await productosApi.eliminarInventario(prodId, tiendaId);
+      notify("Producto removido de la sucursal");
+      await openStoreInventoryModal(tiendaId);
+    } catch {
+      notify("No se pudo remover de la sucursal");
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = idInput.value;
+    const payload = {
+      nombre: nombreInput.value.trim(),
+      direccion: dirInput.value.trim(),
+      descripcion: descInput.value.trim(),
+    };
+
+    try {
+      if (id) {
+        await tiendasApi.updateTienda(id, payload);
+        notify("Sucursal actualizada");
+      } else {
+        await tiendasApi.createTienda(payload);
+        notify("Sucursal registrada exitosamente");
+      }
+      resetForm();
+      await loadTiendas();
+    } catch (err: any) {
+      notify(err?.response?.data?.message || "Error al guardar la sucursal");
+    }
+  });
+
+  tbody.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+
+    const stockBtn = target.closest(
+      "[data-stock-tienda]"
+    ) as HTMLElement | null;
+    if (stockBtn) {
+      await openStoreInventoryModal(stockBtn.dataset.stockTienda!);
+      return;
+    }
+
+    const editBtn = target.closest("[data-edit-tienda]") as HTMLElement | null;
+    if (editBtn) {
+      const t = await tiendasApi.getTiendaById(editBtn.dataset.editTienda!);
+      idInput.value = t.id;
+      nombreInput.value = t.nombre;
+      dirInput.value = t.direccion || "";
+      descInput.value = t.descripcion || "";
+      formTitle.textContent = "EDITAR SUCURSAL";
+      cancelBtn.classList.remove("hidden");
+      return;
+    }
+
+    const delBtn = target.closest("[data-del-tienda]") as HTMLElement | null;
+    if (delBtn) {
+      if (!confirm("¿Dar de baja esta sucursal?")) return;
+      try {
+        await tiendasApi.deleteTienda(delBtn.dataset.delTienda!);
+        notify("Sucursal dada de baja");
+        await loadTiendas();
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "No se pudo dar de baja la sucursal"
+        );
+      }
+    }
+  });
+
+  loadTiendas();
+</script>

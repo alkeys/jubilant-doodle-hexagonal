@@ -1,0 +1,219 @@
+---
+// src/pages/admin/categorias.astro
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="Categorías — Admin NOBLE MUSE"
+  section="categorias"
+>
+  <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+    <!-- ── Formulario Crear / Editar Categoría (4 columnas) ── -->
+    <section class="border border-line bg-white p-7 lg:col-span-4">
+      <div class="mb-6 border-b border-line pb-4">
+        <div class="cap-xs mb-1 text-acc">CLASIFICACIÓN</div>
+        <h2
+          id="cat-form-title"
+          class="m-0 text-[18px] font-normal tracking-[0.2em] text-ink"
+        >
+          NUEVA CATEGORÍA
+        </h2>
+      </div>
+
+      <form id="form-categoria" class="flex flex-col gap-5">
+        <input id="cat-id" type="hidden" />
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">NOMBRE DE CATEGORÍA</label>
+          <input
+            id="cat-nombre"
+            type="text"
+            required
+            placeholder="ej. Calzado y Sneakers"
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">DESCRIPCIÓN</label>
+          <textarea
+            id="cat-descripcion"
+            rows="3"
+            required
+            placeholder="Descripción de la colección..."
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          ></textarea>
+        </div>
+
+        <label class="flex cursor-pointer items-center gap-2.5">
+          <input id="cat-activo" type="checkbox" checked class="accent-ink" />
+          <span class="cap-xs text-ink">CATEGORÍA ACTIVA</span>
+        </label>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="btn-ink flex-1 py-3.5">
+            Guardar Categoría
+          </button>
+          <button
+            id="cat-cancel-btn"
+            type="button"
+            class="btn-ghost hidden px-4 py-3.5 text-ink"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Listado de Categorías (8 columnas) ── -->
+    <section class="border border-line bg-white p-7 lg:col-span-8">
+      <div class="mb-6 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs mb-1 text-muted">COLECCIONES REGISTRADAS</div>
+          <h1 class="m-0 text-[20px] font-normal tracking-[0.2em] text-ink">
+            CATÁLOGO DE CATEGORÍAS
+          </h1>
+        </div>
+        <span id="cat-count" class="note text-muted">0 categorías</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left text-[12px]">
+          <thead>
+            <tr class="border-b border-line text-muted">
+              <th class="cap-xs py-3 pr-4">NOMBRE</th>
+              <th class="cap-xs py-3 px-4">DESCRIPCIÓN</th>
+              <th class="cap-xs py-3 px-4">ESTADO</th>
+              <th class="cap-xs py-3 pl-4 text-right">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="cat-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</AdminLayout>
+
+<script>
+  import { CategoriasApi } from "../../api/services/categorias/CategoriasApi";
+  import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+
+  const categoriasApi = new CategoriasApi();
+  let categorias: CategoriaResponse[] = [];
+
+  const form = document.getElementById("form-categoria") as HTMLFormElement;
+  const idInput = document.getElementById("cat-id") as HTMLInputElement;
+  const nombreInput = document.getElementById("cat-nombre") as HTMLInputElement;
+  const descInput = document.getElementById(
+    "cat-descripcion"
+  ) as HTMLTextAreaElement;
+  const activoInput = document.getElementById("cat-activo") as HTMLInputElement;
+  const formTitle = document.getElementById("cat-form-title")!;
+  const cancelBtn = document.getElementById("cat-cancel-btn")!;
+  const tbody = document.getElementById("cat-tbody")!;
+  const countEl = document.getElementById("cat-count")!;
+
+  const notify = (msg: string) => (window as any).adminToast?.(msg);
+
+  function resetForm() {
+    form.reset();
+    idInput.value = "";
+    activoInput.checked = true;
+    formTitle.textContent = "NUEVA CATEGORÍA";
+    cancelBtn.classList.add("hidden");
+  }
+
+  cancelBtn.addEventListener("click", resetForm);
+
+  async function loadCategorias() {
+    categorias = await categoriasApi.listCategorias(true);
+    countEl.textContent = `${categorias.length} categorías`;
+    tbody.innerHTML = categorias
+      .map(
+        (c) => `
+        <tr class="border-b border-linesoft hover:bg-tint/20 transition">
+          <td class="py-3.5 pr-4 font-medium text-ink">${c.nombre}</td>
+          <td class="py-3.5 px-4 text-soft">${c.descripcion}</td>
+          <td class="py-3.5 px-4">
+            <span class="cap-xs px-2 py-1 ${
+              c.activo
+                ? "bg-ink text-white"
+                : "border border-line bg-tint text-muted"
+            }">
+              ${c.activo ? "ACTIVA" : "INACTIVA"}
+            </span>
+          </td>
+          <td class="py-3.5 pl-4 text-right whitespace-nowrap">
+            <button type="button" data-edit-cat="${c.id}" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer mr-1.5">
+              Editar
+            </button>
+            <button type="button" data-del-cat="${c.id}" class="cap-xs border border-red-300 text-red-700 px-2.5 py-1.5 hover:bg-red-600 hover:text-white cursor-pointer">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = idInput.value;
+    const payload = {
+      nombre: nombreInput.value.trim(),
+      descripcion: descInput.value.trim(),
+      activo: activoInput.checked,
+    };
+
+    try {
+      if (id) {
+        await categoriasApi.updateCategoria(id, payload);
+        notify("Categoría actualizada");
+      } else {
+        await categoriasApi.createCategoria(payload);
+        notify("Categoría creada exitosamente");
+      }
+      resetForm();
+      await loadCategorias();
+    } catch (err: any) {
+      notify(err?.response?.data?.message || "Error al guardar categoría");
+    }
+  });
+
+  tbody.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+    const editBtn = target.closest("[data-edit-cat]") as HTMLElement | null;
+    if (editBtn) {
+      const cat = await categoriasApi.getCategoriaById(
+        editBtn.dataset.editCat!
+      );
+      idInput.value = cat.id;
+      nombreInput.value = cat.nombre;
+      descInput.value = cat.descripcion;
+      activoInput.checked = cat.activo;
+      formTitle.textContent = "EDITAR CATEGORÍA";
+      cancelBtn.classList.remove("hidden");
+      return;
+    }
+
+    const delBtn = target.closest("[data-del-cat]") as HTMLElement | null;
+    if (delBtn) {
+      if (!confirm("¿Eliminar esta categoría?")) return;
+      try {
+        await categoriasApi.deleteCategoria(delBtn.dataset.delCat!);
+        notify("Categoría eliminada");
+        await loadCategorias();
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "No se pudo eliminar la categoría"
+        );
+      }
+    }
+  });
+
+  loadCategorias();
+</script>
+

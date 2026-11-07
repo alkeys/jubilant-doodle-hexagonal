@@ -1,0 +1,1202 @@
+---
+// src/pages/admin/index.astro
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="Subir Productos e Inventario — Admin NOBLE MUSE"
+  section="productos"
+>
+  <!-- ── 1. Accesos Rápidos a las Ventanas de Administración ── -->
+  <section class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <button
+      id="quick-open-upload"
+      type="button"
+      class="flex cursor-pointer items-center justify-between border border-ink bg-[#191936] p-6 text-left text-white transition hover:opacity-95"
+    >
+      <div>
+        <div class="cap-xs text-acclite">ACCIÓN PRINCIPAL</div>
+        <div class="mt-1.5 text-[16px] tracking-[0.18em]">
+          + SUBIR NUEVO PRODUCTO
+        </div>
+        <div class="note mt-1 text-white/70">
+          Datos, tallas, stock y fotografías
+        </div>
+      </div>
+      <span class="text-[22px]">↑</span>
+    </button>
+
+    <a
+      href="/admin/tiendas"
+      class="flex items-center justify-between border border-line bg-white p-6 text-left transition hover:border-ink"
+    >
+      <div>
+        <div class="cap-xs text-acc">SUCURSALES</div>
+        <div class="mt-1.5 text-[16px] tracking-[0.18em] text-ink">
+          ADMINISTRAR TIENDAS
+        </div>
+        <div class="note mt-1 text-soft">
+          Crear sucursales y ver stock por tienda
+        </div>
+      </div>
+      <span class="text-[20px] text-ink">→</span>
+    </a>
+
+    <a
+      href="/admin/ventas"
+      class="flex items-center justify-between border border-line bg-white p-6 text-left transition hover:border-ink"
+    >
+      <div>
+        <div class="cap-xs text-acc">TRANSACCIONES</div>
+        <div class="mt-1.5 text-[16px] tracking-[0.18em] text-ink">
+          VER PEDIDOS Y VENTAS
+        </div>
+        <div class="note mt-1 text-soft">
+          Historial de pedidos, recibos y top ventas
+        </div>
+      </div>
+      <span class="text-[20px] text-ink">→</span>
+    </a>
+  </section>
+
+  <!-- ── 2. Tarjetas de Resumen (KPIs en tiempo real) ── -->
+  <section class="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="border border-line bg-white p-6">
+      <div class="cap-xs text-muted">CATÁLOGO TOTAL</div>
+      <div
+        id="kpi-productos"
+        class="mt-2 text-[28px] font-normal tracking-[0.1em] text-ink"
+      >
+        0
+      </div>
+      <div class="note mt-1 text-soft">productos registrados</div>
+    </div>
+
+    <div class="border border-line bg-white p-6">
+      <div class="cap-xs text-muted">CATEGORÍAS</div>
+      <div
+        id="kpi-categorias"
+        class="mt-2 text-[28px] font-normal tracking-[0.1em] text-ink"
+      >
+        0
+      </div>
+      <div class="note mt-1 text-soft">colecciones disponibles</div>
+    </div>
+
+    <div class="border border-line bg-white p-6">
+      <div class="cap-xs text-muted">SUCURSALES ACTIVAS</div>
+      <div
+        id="kpi-tiendas"
+        class="mt-2 text-[28px] font-normal tracking-[0.1em] text-ink"
+      >
+        0
+      </div>
+      <div class="note mt-1 text-soft">tiendas físicas</div>
+    </div>
+
+    <div class="border border-line bg-white p-6">
+      <div class="cap-xs text-muted">STOCK CONSOLIDADO</div>
+      <div
+        id="kpi-stock"
+        class="mt-2 text-[28px] font-normal tracking-[0.1em] text-acc"
+      >
+        0
+      </div>
+      <div class="note mt-1 text-soft">unidades en cadena</div>
+    </div>
+  </section>
+
+  <!-- ── 3. Listado y Filtros de Productos ── -->
+  <section class="border border-line bg-white p-6 sm:p-8">
+    <div class="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-5 sm:flex-row sm:items-end">
+      <div>
+        <div class="cap-xs mb-1.5 text-acc">GESTIÓN DE CATÁLOGO</div>
+        <h1 class="m-0 text-[22px] font-normal tracking-[0.2em] text-ink">
+          PRODUCTOS, INVENTARIO E IMÁGENES
+        </h1>
+      </div>
+      <button id="btn-new-product" type="button" class="btn-ink px-6 py-3.5">
+        + Subir Nuevo Producto
+      </button>
+    </div>
+
+    <!-- Barra de filtros administrativos -->
+    <div class="mb-6 grid grid-cols-1 gap-4 border-b border-linesoft pb-6 sm:grid-cols-4">
+      <input
+        id="filter-search"
+        type="text"
+        placeholder="Buscar por nombre o descripción..."
+        class="border border-line bg-tint/20 px-3.5 py-2.5 text-[12px] outline-none focus:border-ink"
+      />
+      <select
+        id="filter-categoria"
+        class="cap border border-line bg-white px-3 py-2.5 text-ink"
+      >
+        <option value="">Todas las categorías</option>
+      </select>
+      <select
+        id="filter-tienda"
+        class="cap border border-line bg-white px-3 py-2.5 text-ink"
+      >
+        <option value="">Todas las sucursales</option>
+      </select>
+      <label class="flex cursor-pointer items-center gap-2 text-[11px] tracking-[0.08em] text-soft">
+        <input id="filter-inactivos" type="checkbox" checked class="accent-ink" />
+        <span>Incluir productos inactivos</span>
+      </label>
+    </div>
+
+    <!-- Tabla de Productos -->
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-left text-[12px]">
+        <thead>
+          <tr class="border-b border-line text-muted">
+            <th class="cap-xs py-3 pr-4">PORTADA</th>
+            <th class="cap-xs py-3 px-4">PRODUCTO</th>
+            <th class="cap-xs py-3 px-4">CATEGORÍA</th>
+            <th class="cap-xs py-3 px-4">TALLAS</th>
+            <th class="cap-xs py-3 px-4">RANGO PRECIO</th>
+            <th class="cap-xs py-3 px-4">STOCK TOTAL</th>
+            <th class="cap-xs py-3 px-4">ESTADO</th>
+            <th class="cap-xs py-3 pl-4 text-right">ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody id="admin-products-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Ventana Modal 1: Subir / Editar Producto (con Subida de Fotografías integrada) ── -->
+  <div
+    id="modal-product"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="max-h-[92vh] w-[min(680px,100%)] overflow-y-auto border border-line bg-white p-7 sm:p-9">
+      <div class="mb-6 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs text-acc">CATÁLOGO MULTITIENDA</div>
+          <span
+            id="modal-product-title"
+            class="mt-1 block text-[18px] tracking-[0.18em] text-ink"
+          >
+            SUBIR NUEVO PRODUCTO
+          </span>
+        </div>
+        <button
+          type="button"
+          data-close-modal="modal-product"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <form id="form-product" class="flex flex-col gap-5">
+        <input id="prod-id" type="hidden" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">NOMBRE DEL PRODUCTO *</label>
+            <input
+              id="prod-nombre"
+              type="text"
+              required
+              placeholder="ej. Sneakers Urban Blancos"
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">CATEGORÍA *</label>
+            <select
+              id="prod-categoria"
+              required
+              class="border border-line bg-white px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            ></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <label class="cap-xs text-ink">TALLAS DISPONIBLES</label>
+            <input
+              id="prod-talla"
+              type="text"
+              placeholder="ej. S, M, L, XL o 26, 27, 28 MX"
+              class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+            />
+          </div>
+
+          <div class="flex flex-col justify-end pb-2">
+            <label class="flex cursor-pointer items-center gap-2.5 text-[12px]">
+              <input id="prod-activo" type="checkbox" checked class="accent-ink" />
+              <span class="cap-xs text-ink">PUBLICAR COMO ACTIVO</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="cap-xs text-ink">DESCRIPCIÓN EDITORIAL *</label>
+          <textarea
+            id="prod-descripcion"
+            rows="3"
+            required
+            placeholder="Materiales, corte, detalles de la prenda o calzado..."
+            class="border border-line px-3.5 py-2.5 text-[13px] outline-none focus:border-ink"
+          ></textarea>
+        </div>
+
+        <!-- Inventario Inicial por Sucursal -->
+        <div
+          id="initial-store-fields"
+          class="flex flex-col gap-3 border border-line bg-tint/30 p-4"
+        >
+          <div class="cap-xs text-ink">
+            ASIGNACIÓN DE SUCURSAL, PRECIO Y STOCK INICIAL
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="flex flex-col gap-1.5">
+              <label class="cap-xs text-muted">SUCURSAL</label>
+              <select
+                id="prod-tienda-inicial"
+                class="border border-line bg-white px-3 py-2 text-[12px]"
+              >
+                <option value="">Sin asignar aún</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="cap-xs text-muted">PRECIO ($)</label>
+              <input
+                id="prod-precio-inicial"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="49.99"
+                class="border border-line bg-white px-3 py-2 text-[12px]"
+              />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="cap-xs text-muted">STOCK (UNIDADES)</label>
+              <input
+                id="prod-stock-inicial"
+                type="number"
+                min="0"
+                placeholder="15"
+                class="border border-line bg-white px-3 py-2 text-[12px]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Fotografías Actuales del Producto (visible al Editar) -->
+        <div
+          id="edit-current-photos-wrap"
+          class="hidden flex-col gap-3 border border-line bg-white p-4"
+        >
+          <div class="flex items-center justify-between">
+            <span class="cap-xs text-acc">
+              FOTOGRAFÍAS ACTUALES DEL PRODUCTO
+            </span>
+            <span class="note text-muted">delete /api/v1/productos/&#123;id&#125;/imagenes/&#123;imgId&#125;</span>
+          </div>
+          <div
+            id="edit-current-photos-grid"
+            class="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          ></div>
+        </div>
+
+        <!-- Subida de Fotografías en el mismo paso -->
+        <div
+          id="initial-Photos-fields"
+          class="flex flex-col gap-3 border border-line bg-tint/20 p-4"
+        >
+          <div class="flex items-center justify-between">
+            <label for="prod-initial-files" class="cap-xs text-ink">
+              AGREGAR NUEVAS FOTOGRAFÍAS AL PRODUCTO
+            </label>
+            <span class="note text-muted">jpeg · png · webp</span>
+          </div>
+          <input
+            id="prod-initial-files"
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            class="border border-line bg-white p-2.5 text-[12px]"
+          />
+          <div
+            id="prod-initial-preview"
+            class="hidden grid-cols-2 gap-3 pt-2 sm:grid-cols-4"
+          ></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            data-close-modal="modal-product"
+            class="btn-ghost px-6 py-3.5 text-ink"
+          >
+            Cancelar
+          </button>
+          <button id="prod-submit-btn" type="submit" class="btn-ink px-8 py-3.5">
+            Guardar y Publicar Producto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Ventana Modal 2: Gestión de Inventario por Sucursal (/productos/{id}/tiendas) ── -->
+  <div
+    id="modal-inventory"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="max-h-[90vh] w-[min(640px,100%)] overflow-y-auto border border-line bg-white p-7 sm:p-9">
+      <div class="mb-5 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs text-acc">INVENTARIO MULTITIENDA</div>
+          <h3
+            id="inv-product-name"
+            class="m-0 mt-1 text-[16px] font-normal tracking-[0.16em]"
+          ></h3>
+        </div>
+        <button
+          type="button"
+          data-close-modal="modal-inventory"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div id="inv-current-list" class="mb-6 flex flex-col gap-2"></div>
+
+      <form
+        id="form-inventory"
+        class="flex flex-col gap-4 border-t border-line bg-tint/30 p-5"
+      >
+        <input id="inv-prod-id" type="hidden" />
+        <div class="cap-xs text-ink">ASIGNAR O ACTUALIZAR SUCURSAL</div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">SUCURSAL</label>
+            <select
+              id="inv-tienda-id"
+              required
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            ></select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">PRECIO ($)</label>
+            <input
+              id="inv-precio"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              placeholder="59.90"
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="cap-xs text-muted">STOCK (UNIDADES)</label>
+            <input
+              id="inv-stock"
+              type="number"
+              min="0"
+              required
+              placeholder="20"
+              class="border border-line bg-white px-3 py-2 text-[12px]"
+            />
+          </div>
+        </div>
+
+        <button type="submit" class="btn-ink py-3">
+          Guardar Precio y Stock en Sucursal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Ventana Modal 3: Gestión de Galería de Imágenes (/productos/{id}/imagenes) ── -->
+  <div
+    id="modal-images"
+    class="fixed inset-0 z-[200] hidden items-center justify-center bg-ink/45 p-4 [&.on]:flex"
+  >
+    <div class="max-h-[90vh] w-[min(640px,100%)] overflow-y-auto border border-line bg-white p-7 sm:p-9">
+      <div class="mb-5 flex items-center justify-between border-b border-line pb-4">
+        <div>
+          <div class="cap-xs text-acc">GALERÍA MULTIMEDIA</div>
+          <h3
+            id="img-product-name"
+            class="m-0 mt-1 text-[16px] font-normal tracking-[0.16em]"
+          ></h3>
+        </div>
+        <button
+          type="button"
+          data-close-modal="modal-images"
+          class="cap cursor-pointer text-muted hover:text-ink"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div
+        id="img-current-grid"
+        class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3"
+      ></div>
+
+      <form
+        id="form-upload-images"
+        class="flex flex-col gap-4 border-t border-line bg-tint/30 p-5"
+      >
+        <input id="img-prod-id" type="hidden" />
+        <label class="cap-xs text-ink">
+          SUBIR NUEVAS FOTOGRAFÍAS (JPEG, PNG, WEBP)
+        </label>
+        <input
+          id="img-files"
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          required
+          class="border border-line bg-white p-2.5 text-[12px]"
+        />
+        <button type="submit" class="btn-ink py-3">
+          Subir Imágenes al Producto
+        </button>
+      </form>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { ProductosApi } from "../../api/services/productos/ProductosApi";
+  import { CategoriasApi } from "../../api/services/categorias/CategoriasApi";
+  import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
+  import { resolveImageUrl } from "../../api/lib/ApiClient";
+  import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+  import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+  import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+  const productosApi = new ProductosApi();
+  const categoriasApi = new CategoriasApi();
+  const tiendasApi = new TiendasApi();
+
+  let productos: ProductoResponse[] = [];
+  let categorias: CategoriaResponse[] = [];
+  let tiendas: TiendaResponse[] = [];
+
+  const tbody = document.getElementById("admin-products-tbody");
+  const filterSearch = document.getElementById(
+    "filter-search"
+  ) as HTMLInputElement;
+  const filterCategoria = document.getElementById(
+    "filter-categoria"
+  ) as HTMLSelectElement;
+  const filterTienda = document.getElementById(
+    "filter-tienda"
+  ) as HTMLSelectElement;
+  const filterInactivos = document.getElementById(
+    "filter-inactivos"
+  ) as HTMLInputElement;
+
+  const prodCategoriaSelect = document.getElementById(
+    "prod-categoria"
+  ) as HTMLSelectElement;
+  const prodTiendaInicialSelect = document.getElementById(
+    "prod-tienda-inicial"
+  ) as HTMLSelectElement;
+  const invTiendaSelect = document.getElementById(
+    "inv-tienda-id"
+  ) as HTMLSelectElement;
+  const initialFilesInput = document.getElementById(
+    "prod-initial-files"
+  ) as HTMLInputElement;
+  const initialPreviewBox = document.getElementById("prod-initial-preview");
+  const editPhotosWrap = document.getElementById("edit-current-photos-wrap");
+  const editPhotosGrid = document.getElementById("edit-current-photos-grid");
+
+  // Lista manipulable de archivos seleccionados antes de subir
+  let selectedInitialFiles: File[] = [];
+
+  const notify = (msg: string) => (window as any).adminToast?.(msg);
+
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = (btn as HTMLElement).dataset.closeModal!;
+      document.getElementById(id)?.classList.remove("on");
+    });
+  });
+
+  function renderInitialPreview() {
+    if (!initialPreviewBox) return;
+    if (!selectedInitialFiles.length) {
+      initialPreviewBox.classList.add("hidden");
+      initialPreviewBox.classList.remove("grid");
+      initialPreviewBox.innerHTML = "";
+      if (initialFilesInput) initialFilesInput.value = "";
+      return;
+    }
+    initialPreviewBox.classList.remove("hidden");
+    initialPreviewBox.classList.add("grid");
+    initialPreviewBox.innerHTML = selectedInitialFiles
+      .map((file, idx) => {
+        const url = URL.createObjectURL(file);
+        return `
+          <div class="flex flex-col justify-between border border-line bg-white p-2">
+            <img src="${url}" alt="" class="aspect-[3/4] w-full object-cover" />
+            <div class="mt-2 flex items-center justify-between gap-1">
+              <span class="note truncate text-muted">${
+                idx === 0 ? "Nueva 1" : `Nueva ${idx + 1}`
+              }</span>
+              <button
+                type="button"
+                data-rm-preview="${idx}"
+                class="cap-xs cursor-pointer text-red-600 hover:underline"
+              >
+                × Quitar
+              </button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  // Vista previa de imágenes al seleccionar archivos en el formulario de producto
+  initialFilesInput?.addEventListener("change", () => {
+    const newFiles = initialFilesInput.files
+      ? Array.from(initialFilesInput.files)
+      : [];
+    selectedInitialFiles = [...selectedInitialFiles, ...newFiles];
+    renderInitialPreview();
+  });
+
+  // Quitar una foto de la vista previa antes de subirla
+  initialPreviewBox?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(
+      "[data-rm-preview]"
+    ) as HTMLElement | null;
+    if (!btn) return;
+    const idx = Number(btn.dataset.rmPreview);
+    selectedInitialFiles.splice(idx, 1);
+    renderInitialPreview();
+  });
+
+  // Renderizar fotos actuales dentro del modal "Editar Producto"
+  function renderEditModalPhotos(prodId: string) {
+    if (!editPhotosWrap || !editPhotosGrid) return;
+    const p = productos.find((x) => x.id === prodId);
+    if (!p) return;
+
+    editPhotosWrap.classList.remove("hidden");
+    editPhotosWrap.classList.add("flex");
+
+    if (!p.imagenes || p.imagenes.length === 0) {
+      editPhotosGrid.innerHTML = `<div class="col-span-full cap-xs py-4 text-center text-muted">Este producto no tiene fotografías guardadas actualmente.</div>`;
+      return;
+    }
+
+    editPhotosGrid.innerHTML = p.imagenes
+      .map(
+        (img) => `
+        <div class="flex flex-col justify-between border ${
+          img.esPrincipal ? "border-acc" : "border-line"
+        } bg-white p-2">
+          <img src="${resolveImageUrl(
+            img.url
+          )}" alt="" class="aspect-[3/4] w-full object-cover" />
+          <div class="mt-2 flex items-center justify-between gap-1 pt-1 border-t border-linesoft">
+            ${
+              img.esPrincipal
+                ? `<span class="cap-xs bg-acc px-1.5 py-0.5 text-white">PORTADA</span>`
+                : `<button type="button" data-edit-main-img="${img.id}" data-edit-prod="${p.id}" class="cap-xs link-u cursor-pointer text-ink">Portada</button>`
+            }
+            <button
+              type="button"
+              data-edit-del-img="${img.id}"
+              data-edit-prod="${p.id}"
+              class="cap-xs cursor-pointer font-medium text-red-600 hover:underline"
+            >
+              Borrar foto
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+  }
+
+  // Eventos de Borrar foto / Hacer portada dentro del modal de Editar Producto
+  editPhotosGrid?.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+
+    const mainBtn = target.closest(
+      "[data-edit-main-img]"
+    ) as HTMLElement | null;
+    if (mainBtn) {
+      const prodId = mainBtn.dataset.editProd!;
+      const imgId = mainBtn.dataset.editMainImg!;
+      try {
+        mainBtn.textContent = "...";
+        await productosApi.setPrincipalImagen(prodId, imgId);
+        notify("Foto principal actualizada");
+        await fetchProducts();
+        renderEditModalPhotos(prodId);
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message ||
+            "No se pudo cambiar la imagen principal"
+        );
+      }
+      return;
+    }
+
+    const delBtn = target.closest("[data-edit-del-img]") as HTMLElement | null;
+    if (delBtn) {
+      const prodId = delBtn.dataset.editProd!;
+      const imgId = delBtn.dataset.editDelImg!;
+      if (!confirm("¿Seguro que deseas borrar esta fotografía del producto?"))
+        return;
+      try {
+        delBtn.textContent = "Borrando...";
+        await productosApi.deleteImagen(prodId, imgId);
+        notify("Fotografía eliminada correctamente");
+        await fetchProducts();
+        renderEditModalPhotos(prodId);
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "No se pudo borrar la fotografía"
+        );
+      }
+    }
+  });
+
+  async function loadCatalogData() {
+    try {
+      const [cats, tds] = await Promise.all([
+        categoriasApi.listCategorias(true),
+        tiendasApi.listTiendasActivas(),
+      ]);
+      categorias = cats;
+      tiendas = tds;
+
+      const catOptions = categorias
+        .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
+        .join("");
+      filterCategoria.innerHTML =
+        `<option value="">Todas las categorías</option>` + catOptions;
+      prodCategoriaSelect.innerHTML = catOptions;
+
+      const tiendaOptions = tiendas
+        .map((t) => `<option value="${t.id}">${t.nombre}</option>`)
+        .join("");
+      filterTienda.innerHTML =
+        `<option value="">Todas las sucursales</option>` + tiendaOptions;
+      prodTiendaInicialSelect.innerHTML =
+        `<option value="">Sin asignar aún</option>` + tiendaOptions;
+      invTiendaSelect.innerHTML = tiendaOptions;
+
+      await fetchProducts();
+    } catch (e) {
+      console.error("Error al cargar datos en Admin:", e);
+    }
+  }
+
+  async function fetchProducts() {
+    const buscar = filterSearch.value.trim() || undefined;
+    const categoriaId = filterCategoria.value || undefined;
+    const tiendaId = filterTienda.value || undefined;
+    const incluirInactivos = filterInactivos.checked;
+
+    productos = await productosApi.listProductos({
+      buscar,
+      categoriaId,
+      tiendaId,
+      incluirInactivos,
+    });
+
+    const kpiProd = document.getElementById("kpi-productos");
+    const kpiCat = document.getElementById("kpi-categorias");
+    const kpiTiendas = document.getElementById("kpi-tiendas");
+    const kpiStock = document.getElementById("kpi-stock");
+
+    if (kpiProd) kpiProd.textContent = String(productos.length);
+    if (kpiCat) kpiCat.textContent = String(categorias.length);
+    if (kpiTiendas) kpiTiendas.textContent = String(tiendas.length);
+    if (kpiStock) {
+      const totalStock = productos.reduce(
+        (acc, p) => acc + (p.stockTotal ?? p.stock ?? 0),
+        0
+      );
+      kpiStock.textContent = String(totalStock);
+    }
+
+    renderProductsTable();
+  }
+
+  function renderProductsTable() {
+    if (!tbody) return;
+    const catMap = new Map(categorias.map((c) => [c.id, c.nombre]));
+
+    if (productos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="cap-tag py-12 text-center text-muted">No se encontraron productos con esos filtros.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = productos
+      .map((p) => {
+        const img =
+          p.imagenes?.find((i) => i.esPrincipal)?.url ||
+          p.imagenes?.[0]?.url ||
+          "";
+        const catNombre = catMap.get(p.categoriaId) || "Sin categoría";
+        const pMin = p.precioMin ?? p.precio ?? 0;
+        const pMax = p.precioMax ?? p.precio ?? 0;
+        const precioTexto =
+          pMin !== pMax
+            ? `$${pMin.toFixed(2)} – $${pMax.toFixed(2)}`
+            : `$${pMin.toFixed(2)}`;
+        const stockTotal = p.stockTotal ?? p.stock ?? 0;
+
+        return `
+          <tr class="border-b border-linesoft hover:bg-tint/20 transition">
+            <td class="py-3 pr-4">
+              ${
+                img
+                  ? `<img src="${img}" alt="" class="h-14 w-11 object-cover border border-line" />`
+                  : `<div class="h-14 w-11 bg-tint flex items-center justify-center note text-muted">sin img</div>`
+              }
+            </td>
+            <td class="py-3 px-4">
+              <div class="font-medium text-ink">${p.nombre}</div>
+              <div class="line-clamp-1 max-w-[260px] text-[11px] text-soft">${
+                p.descripcion
+              }</div>
+            </td>
+            <td class="py-3 px-4">${catNombre}</td>
+            <td class="py-3 px-4 note text-ink">${p.talla || "ÚNICA"}</td>
+            <td class="py-3 px-4 font-medium">${precioTexto}</td>
+            <td class="py-3 px-4">
+              <span class="font-medium">${stockTotal} u.</span>
+              <span class="note block text-muted">${
+                (p.tiendas || []).length
+              } sucursal(es)</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="cap-xs px-2 py-1 ${
+                p.activo
+                  ? "bg-ink text-white"
+                  : "border border-line bg-tint text-muted"
+              }">
+                ${p.activo ? "ACTIVO" : "INACTIVO"}
+              </span>
+            </td>
+            <td class="py-3 pl-4 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-2">
+                <button type="button" data-act-inv="${
+                  p.id
+                }" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer">
+                  Stock (${(p.tiendas || []).length})
+                </button>
+                <button type="button" data-act-img="${
+                  p.id
+                }" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer">
+                  Fotos (${(p.imagenes || []).length})
+                </button>
+                <button type="button" data-act-edit="${
+                  p.id
+                }" class="cap-xs border border-line px-2.5 py-1.5 hover:border-ink cursor-pointer">
+                  Editar
+                </button>
+                <button type="button" data-act-del="${
+                  p.id
+                }" class="cap-xs border border-red-300 text-red-700 px-2.5 py-1.5 hover:bg-red-600 hover:text-white cursor-pointer">
+                  Borrar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  filterSearch?.addEventListener("input", fetchProducts);
+  filterCategoria?.addEventListener("change", fetchProducts);
+  filterTienda?.addEventListener("change", fetchProducts);
+  filterInactivos?.addEventListener("change", fetchProducts);
+
+  function openNewProductModal() {
+    (document.getElementById("form-product") as HTMLFormElement)?.reset();
+    (document.getElementById("prod-id") as HTMLInputElement).value = "";
+    (document.getElementById("prod-activo") as HTMLInputElement).checked = true;
+    document.getElementById("modal-product-title")!.textContent =
+      "SUBIR NUEVO PRODUCTO";
+    document.getElementById("initial-store-fields")?.classList.remove("hidden");
+    document.getElementById("initial-Photos-fields")?.classList.remove("hidden");
+    editPhotosWrap?.classList.add("hidden");
+    editPhotosWrap?.classList.remove("flex");
+    selectedInitialFiles = [];
+    renderInitialPreview();
+    document.getElementById("modal-product")?.classList.add("on");
+  }
+
+  document
+    .getElementById("btn-new-product")
+    ?.addEventListener("click", openNewProductModal);
+  document
+    .getElementById("quick-open-upload")
+    ?.addEventListener("click", openNewProductModal);
+
+  // Guardar Producto (POST / PUT + Subida de Imágenes integrada)
+  document
+    .getElementById("form-product")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById(
+        "prod-submit-btn"
+      ) as HTMLButtonElement | null;
+      const id = (document.getElementById("prod-id") as HTMLInputElement).value;
+      const nombre = (
+        document.getElementById("prod-nombre") as HTMLInputElement
+      ).value.trim();
+      const categoriaId = prodCategoriaSelect.value;
+      const talla =
+        (
+          document.getElementById("prod-talla") as HTMLInputElement
+        ).value.trim() || undefined;
+      const descripcion = (
+        document.getElementById("prod-descripcion") as HTMLTextAreaElement
+      ).value.trim();
+      const activo = (
+        document.getElementById("prod-activo") as HTMLInputElement
+      ).checked;
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "GUARDANDO...";
+      }
+
+      try {
+        if (id) {
+          await productosApi.updateProducto(id, {
+            categoriaId,
+            nombre,
+            descripcion,
+            talla,
+            activo,
+          });
+          if (selectedInitialFiles.length > 0) {
+            await productosApi.uploadImagenes(id, selectedInitialFiles);
+            notify(
+              `Producto actualizado y ${selectedInitialFiles.length} foto(s) añadida(s)`
+            );
+          } else {
+            notify("Producto actualizado correctamente");
+          }
+        } else {
+          const tiendaId = prodTiendaInicialSelect.value || undefined;
+          const precioRaw = (
+            document.getElementById("prod-precio-inicial") as HTMLInputElement
+          ).value;
+          const stockRaw = (
+            document.getElementById("prod-stock-inicial") as HTMLInputElement
+          ).value;
+
+          const nuevoProd = await productosApi.createProducto({
+            categoriaId,
+            nombre,
+            descripcion,
+            talla,
+            activo,
+            tiendaId,
+            precio: precioRaw ? Number(precioRaw) : undefined,
+            stock: stockRaw ? Number(stockRaw) : undefined,
+          });
+
+          // Si seleccionó fotografías al crear el producto, subirlas automáticamente
+          if (selectedInitialFiles.length > 0 && nuevoProd?.id) {
+            await productosApi.uploadImagenes(
+              nuevoProd.id,
+              selectedInitialFiles
+            );
+            notify(
+              `Producto "${nuevoProd.nombre}" creado con ${selectedInitialFiles.length} fotografía(s)`
+            );
+          } else {
+            notify(`Producto "${nuevoProd.nombre}" creado exitosamente`);
+          }
+        }
+
+        selectedInitialFiles = [];
+        renderInitialPreview();
+        document.getElementById("modal-product")?.classList.remove("on");
+        await fetchProducts();
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "Error al guardar el producto"
+        );
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Guardar y Publicar Producto";
+        }
+      }
+    });
+
+  function openInventoryModal(prodId: string) {
+    const p = productos.find((x) => x.id === prodId);
+    if (!p) return;
+    (document.getElementById("inv-prod-id") as HTMLInputElement).value = p.id;
+    document.getElementById("inv-product-name")!.textContent = p.nombre;
+
+    const listEl = document.getElementById("inv-current-list")!;
+    if (!p.tiendas || p.tiendas.length === 0) {
+      listEl.innerHTML = `<div class="cap-xs py-4 text-muted">Este producto aún no está asignado a ninguna sucursal.</div>`;
+    } else {
+      listEl.innerHTML = p.tiendas
+        .map(
+          (inv) => `
+          <div class="flex items-center justify-between border border-line px-4 py-3 text-[12px]">
+            <div>
+              <div class="font-medium text-ink">${inv.tiendaNombre}</div>
+              <div class="note text-muted">Precio: $${inv.precio.toFixed(
+                2
+              )} · Stock: ${inv.stock} u.</div>
+            </div>
+            <button
+              type="button"
+              data-rm-inv-tienda="${inv.tiendaId}"
+              data-rm-inv-prod="${p.id}"
+              class="cap-xs text-red-600 hover:underline cursor-pointer"
+            >
+              Quitar de sucursal
+            </button>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    document.getElementById("modal-inventory")?.classList.add("on");
+  }
+
+  document
+    .getElementById("form-inventory")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const prodId = (
+        document.getElementById("inv-prod-id") as HTMLInputElement
+      ).value;
+      const tiendaId = invTiendaSelect.value;
+      const precio = Number(
+        (document.getElementById("inv-precio") as HTMLInputElement).value
+      );
+      const stock = Number(
+        (document.getElementById("inv-stock") as HTMLInputElement).value
+      );
+
+      try {
+        await productosApi.asignarInventario(prodId, {
+          tiendaId,
+          precio,
+          stock,
+          activo: true,
+        });
+        notify("Inventario de sucursal actualizado");
+        await fetchProducts();
+        openInventoryModal(prodId);
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "Error al asignar inventario"
+        );
+      }
+    });
+
+  document
+    .getElementById("inv-current-list")
+    ?.addEventListener("click", async (e) => {
+      const btn = (e.target as HTMLElement).closest(
+        "[data-rm-inv-tienda]"
+      ) as HTMLElement | null;
+      if (!btn) return;
+      const prodId = btn.dataset.rmInvProd!;
+      const tiendaId = btn.dataset.rmInvTienda!;
+      try {
+        await productosApi.eliminarInventario(prodId, tiendaId);
+        notify("Producto removido de la sucursal");
+        await fetchProducts();
+        openInventoryModal(prodId);
+      } catch {
+        notify("No se pudo remover de la sucursal");
+      }
+    });
+
+  function openImagesModal(prodId: string) {
+    const p = productos.find((x) => x.id === prodId);
+    if (!p) return;
+    (document.getElementById("img-prod-id") as HTMLInputElement).value = p.id;
+    document.getElementById("img-product-name")!.textContent = p.nombre;
+
+    const gridEl = document.getElementById("img-current-grid")!;
+    if (!p.imagenes || p.imagenes.length === 0) {
+      gridEl.innerHTML = `<div class="col-span-full cap-xs py-6 text-center text-muted">Este producto no tiene imágenes cargadas.</div>`;
+    } else {
+      gridEl.innerHTML = p.imagenes
+        .map(
+          (img) => `
+          <div class="flex flex-col border ${
+            img.esPrincipal ? "border-acc" : "border-line"
+          } p-2">
+            <img src="${img.url}" alt="" class="aspect-[3/4] w-full object-cover" />
+            <div class="mt-2 flex items-center justify-between gap-2">
+              ${
+                img.esPrincipal
+                  ? `<span class="cap-xs bg-acc px-2 py-0.5 text-white">PRINCIPAL</span>`
+                  : `<button type="button" data-set-main-img="${img.id}" data-img-prod="${p.id}" class="cap-xs link-u cursor-pointer text-ink">Hacer principal</button>`
+              }
+              <button type="button" data-del-img="${img.id}" data-img-prod="${
+                p.id
+              }" class="cap-xs text-red-600 cursor-pointer">Borrar</button>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    document.getElementById("modal-images")?.classList.add("on");
+  }
+
+  document
+    .getElementById("form-upload-images")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const prodId = (
+        document.getElementById("img-prod-id") as HTMLInputElement
+      ).value;
+      const fileInput = document.getElementById(
+        "img-files"
+      ) as HTMLInputElement;
+      const files = fileInput.files ? Array.from(fileInput.files) : [];
+      if (!files.length) return;
+
+      try {
+        await productosApi.uploadImagenes(prodId, files);
+        fileInput.value = "";
+        notify("Imágenes subidas correctamente");
+        await fetchProducts();
+        openImagesModal(prodId);
+      } catch (err: any) {
+        notify(err?.response?.data?.message || "Error al subir imágenes");
+      }
+    });
+
+  document
+    .getElementById("img-current-grid")
+    ?.addEventListener("click", async (e) => {
+      const target = e.target as HTMLElement;
+      const mainBtn = target.closest(
+        "[data-set-main-img]"
+      ) as HTMLElement | null;
+      if (mainBtn) {
+        const prodId = mainBtn.dataset.imgProd!;
+        const imgId = mainBtn.dataset.setMainImg!;
+        try {
+          mainBtn.textContent = "...";
+          await productosApi.setPrincipalImagen(prodId, imgId);
+          notify("Imagen principal actualizada");
+          await fetchProducts();
+          openImagesModal(prodId);
+        } catch (err: any) {
+          notify(
+            err?.response?.data?.message ||
+              "No se pudo actualizar la imagen principal"
+          );
+        }
+        return;
+      }
+
+      const delBtn = target.closest("[data-del-img]") as HTMLElement | null;
+      if (delBtn) {
+        const prodId = delBtn.dataset.imgProd!;
+        const imgId = delBtn.dataset.delImg!;
+        if (!confirm("¿Seguro que deseas borrar esta fotografía?")) return;
+        try {
+          delBtn.textContent = "Borrando...";
+          await productosApi.deleteImagen(prodId, imgId);
+          notify("Fotografía eliminada correctamente");
+          await fetchProducts();
+          openImagesModal(prodId);
+        } catch (err: any) {
+          notify(
+            err?.response?.data?.message || "No se pudo borrar la fotografía"
+          );
+        }
+      }
+    });
+
+  tbody?.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+
+    const invBtn = target.closest("[data-act-inv]") as HTMLElement | null;
+    if (invBtn) {
+      openInventoryModal(invBtn.dataset.actInv!);
+      return;
+    }
+
+    const imgBtn = target.closest("[data-act-img]") as HTMLElement | null;
+    if (imgBtn) {
+      openImagesModal(imgBtn.dataset.actImg!);
+      return;
+    }
+
+    const editBtn = target.closest("[data-act-edit]") as HTMLElement | null;
+    if (editBtn) {
+      const p = productos.find((x) => x.id === editBtn.dataset.actEdit!);
+      if (!p) return;
+      (document.getElementById("prod-id") as HTMLInputElement).value = p.id;
+      (document.getElementById("prod-nombre") as HTMLInputElement).value =
+        p.nombre;
+      prodCategoriaSelect.value = p.categoriaId;
+      (document.getElementById("prod-talla") as HTMLInputElement).value =
+        p.talla || "";
+      (
+        document.getElementById("prod-descripcion") as HTMLTextAreaElement
+      ).value = p.descripcion;
+      (document.getElementById("prod-activo") as HTMLInputElement).checked =
+        p.activo;
+
+      document.getElementById("modal-product-title")!.textContent =
+        "EDITAR PRODUCTO";
+      document.getElementById("initial-store-fields")?.classList.add("hidden");
+      document.getElementById("initial-Photos-fields")?.classList.remove("hidden");
+      selectedInitialFiles = [];
+      renderInitialPreview();
+      renderEditModalPhotos(p.id);
+      document.getElementById("modal-product")?.classList.add("on");
+      return;
+    }
+
+    const delBtn = target.closest("[data-act-del]") as HTMLElement | null;
+    if (delBtn) {
+      const id = delBtn.dataset.actDel!;
+      if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+      try {
+        await productosApi.deleteProducto(id);
+        notify("Producto eliminado");
+        await fetchProducts();
+      } catch (err: any) {
+        notify(
+          err?.response?.data?.message || "No se pudo eliminar el producto"
+        );
+      }
+    }
+  });
+
+  loadCatalogData();
+</script>
