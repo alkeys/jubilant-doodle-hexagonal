@@ -34,6 +34,20 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
 
     @Override
     public Producto save(Producto producto) {
+        if (producto.id() != null) {
+            Optional<ProductoEntity> existenteOpt = productoRepository.findById(producto.id());
+            if (existenteOpt.isPresent()) {
+                ProductoEntity existente = existenteOpt.get();
+                existente.setCategoriaId(producto.categoriaId());
+                existente.setNombre(producto.nombre());
+                existente.setDescripcion(producto.descripcion());
+                existente.setTalla(producto.talla());
+                existente.setActivo(producto.activo());
+                existente.setActualizadoEn(
+                        producto.actualizadoEn() != null ? producto.actualizadoEn() : java.time.Instant.now());
+                return mapper.toDomain(productoRepository.saveAndFlush(existente));
+            }
+        }
         ProductoEntity entity = mapper.toEntity(producto);
         return mapper.toDomain(productoRepository.save(entity));
     }
@@ -96,12 +110,25 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
         ProductoEntity productoEntity = productoRepository.findById(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
 
+        // Si la imagen ya existe (ej. actualizar esPrincipal u orden), modificar la entidad gestionada
+        if (imagen.id() != null) {
+            Optional<ProductoImagenEntity> existente = imagenRepository.findById(imagen.id());
+            if (existente.isPresent()) {
+                ProductoImagenEntity entity = existente.get();
+                entity.setUrl(imagen.url());
+                entity.setEsPrincipal(imagen.esPrincipal());
+                entity.setOrden(imagen.orden());
+                ProductoImagenEntity actualizada = imagenRepository.saveAndFlush(entity);
+                return mapper.toDomain(actualizada);
+            }
+        }
+
         ProductoImagenEntity imagenEntity = mapper.toEntity(imagen);
         imagenEntity.setProducto(productoEntity);
+        ProductoImagenEntity guardada = imagenRepository.saveAndFlush(imagenEntity);
         if (productoEntity.getImagenes() != null) {
-            productoEntity.getImagenes().add(imagenEntity);
+            productoEntity.getImagenes().add(guardada);
         }
-        ProductoImagenEntity guardada = imagenRepository.save(imagenEntity);
         return mapper.toDomain(guardada);
     }
 
@@ -110,9 +137,13 @@ public class JpaProductoAdapter implements ProductoRepositoryPort {
         productoRepository.findById(productoId).ifPresent(p -> {
             if (p.getImagenes() != null) {
                 p.getImagenes().removeIf(img -> imagenId.equals(img.getId()));
+                productoRepository.saveAndFlush(p);
             }
         });
-        imagenRepository.deleteById(imagenId);
+        if (imagenRepository.existsById(imagenId)) {
+            imagenRepository.deleteById(imagenId);
+            imagenRepository.flush();
+        }
     }
 
     @Override

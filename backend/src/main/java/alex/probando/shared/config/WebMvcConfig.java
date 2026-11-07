@@ -1,5 +1,7 @@
 package alex.probando.shared.config;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -17,7 +19,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(uploadPath);
+        } catch (IOException ignored) {
+        }
+
         String uploadUri = uploadPath.toUri().toString();
+        if (!uploadUri.endsWith("/")) {
+            uploadUri = uploadUri + "/";
+        }
 
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(uploadUri);

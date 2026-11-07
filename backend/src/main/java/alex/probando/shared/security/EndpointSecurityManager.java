@@ -18,6 +18,11 @@ public class EndpointSecurityManager {
     public void configure(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
         auth
             // ==========================================
+            // 0. PREFLIGHT CORS (OPTIONS)
+            // ==========================================
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+            // ==========================================
             // 1. ENDPOINTS PÚBLICOS
             // ==========================================
             .requestMatchers("/api/v1/auth/**").permitAll()
@@ -47,6 +52,8 @@ public class EndpointSecurityManager {
             // Registrado antes de /{id} para que no sea absorbido como variable de ruta
             // ==========================================
             .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/perfil").authenticated()
+            .requestMatchers(HttpMethod.POST, "/api/v1/ventas").authenticated()
+            .requestMatchers(HttpMethod.GET, "/api/v1/ventas/**").authenticated()
 
             // ==========================================
             // 3. ENDPOINTS EXCLUSIVOS DE ADMIN
