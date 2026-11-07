@@ -1,0 +1,79 @@
+---
+// src/components/home/SucursalesSection.astro
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+interface Props {
+  tiendas: TiendaResponse[];
+  productos: ProductoResponse[];
+}
+
+const { tiendas = [], productos = [] } = Astro.props;
+---
+
+<!-- ── Directorio de Sucursales Físicas (TiendasApi) ── -->
+{
+  tiendas.length > 0 && (
+    <section
+      id="sucursales"
+      class="mx-auto max-w-[1640px] scroll-mt-24 px-5 pt-24 lg:px-9"
+    >
+      <div class="mb-8 flex flex-col justify-between gap-3 border-b border-line pb-5 sm:flex-row sm:items-end">
+        <div>
+          <div class="cap-xs mb-1.5 text-muted">PUNTOS DE VENTA FÍSICOS</div>
+          <h2 class="m-0 text-[20px] font-normal tracking-[0.22em]">
+            NUESTRAS SUCURSALES
+          </h2>
+        </div>
+        <a href="/#catalogo" data-filter-tienda="" class="cap link-u">
+          Ver inventario de todas las sucursales
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {tiendas.map((tienda) => {
+          const piezasEnSucursal = productos.filter((p) =>
+            p.tiendas?.some(
+              (inv) =>
+                inv.tiendaId === tienda.id && inv.activo && inv.stock > 0
+            )
+          ).length;
+
+          return (
+            <div class="flex flex-col justify-between gap-6 border border-line bg-tint/25 p-7 transition hover:border-ink">
+              <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                  <span class="cap-xs text-acc">SUCURSAL ACTIVA</span>
+                  <span class="cap-xs text-muted">
+                    {piezasEnSucursal} productos en stock
+                  </span>
+                </div>
+                <h3 class="m-0 text-[18px] font-normal tracking-[0.14em]">
+                  {tienda.nombre.toUpperCase()}
+                </h3>
+                <p class="m-0 text-[12.5px] leading-relaxed text-soft">
+                  {tienda.descripcion}
+                </p>
+                {tienda.direccion && (
+                  <div class="mt-1 flex items-center gap-2 text-[11.5px] text-ink">
+                    <span>📍</span>
+                    <span>{tienda.direccion}</span>
+                  </div>
+                )}
+              </div>
+
+              <a
+                href={`/?tiendaId=${tienda.id}#catalogo`}
+                data-filter-tienda={tienda.id}
+                class="btn-ink p-3.5 text-center"
+              >
+                Ver productos en {tienda.nombre}
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )
+}
+

@@ -1,0 +1,183 @@
+---
+// src/components/layout/Navbar.astro
+import MegaMenu from "./MegaMenu.astro";
+import SearchPanel from "./SearchPanel.astro";
+import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+interface FeaturedProduct {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+}
+
+interface Props {
+  heroHeader?: boolean;
+  tiendas: TiendaResponse[];
+  categorias: CategoriaResponse[];
+  megaFeatured?: FeaturedProduct;
+}
+
+const {
+  heroHeader = false,
+  tiendas = [],
+  categorias = [],
+  megaFeatured,
+} = Astro.props;
+---
+
+<!-- ── Barra de Navegación Principal (Transparente sobre el Hero, sólida al hacer scroll) ── -->
+<header
+  data-header
+  class="fixed inset-x-0 top-0 z-[100] border-b border-transparent text-white transition-[background,color,border-color,transform] duration-[400ms]"
+  style={heroHeader ? "transform:translateY(36px)" : ""}
+>
+  <div
+    class="mx-auto flex h-[60px] max-w-[1640px] items-center justify-between px-4 sm:grid sm:h-[86px] sm:grid-cols-[1fr_auto_1fr] sm:px-5 lg:px-9"
+  >
+    <!-- Enlaces Izquierda (Desktop) -->
+    <nav
+      class="cap hidden items-center gap-4 whitespace-nowrap sm:flex lg:gap-7"
+    >
+      <a href="/" data-mega-off class="hidden sm:inline">Inicio</a>
+      <a href="/#catalogo" data-mega-on class="hidden sm:inline">Catálogo</a>
+      <a href="/#sucursales" data-mega-off class="hidden sm:inline">Tiendas</a>
+      <a href="/user/pedidos" data-mega-off class="hidden md:inline">Mis Pedidos</a>
+      <a href="/#terminos" data-mega-off class="hidden xl:inline">Términos</a>
+    </nav>
+
+    <!-- Marca Central -->
+    <a href="/" data-mega-off class="flex flex-col items-center gap-1.5">
+      <span
+        class="whitespace-nowrap text-[clamp(15px,1.5vw,24px)] font-normal leading-none tracking-[0.42em]"
+        style="text-indent:.42em"
+      >
+        NOBLE MUSE AVILES
+      </span>
+      <span
+        class="whitespace-nowrap text-[7px] leading-none tracking-[0.44em] opacity-70"
+        style="text-indent:.44em"
+      >
+        ROPA · CALZADO · ACCESORIOS
+      </span>
+    </a>
+
+    <!-- Iconos de Acción Derecha (Búsqueda, Favoritos, Bolsa) -->
+    <div
+      class="order-first flex items-center justify-end gap-4 whitespace-nowrap sm:order-none lg:gap-6"
+      data-mega-off
+    >
+      <button
+        data-search-toggle
+        aria-label="Buscar"
+        class="flex cursor-pointer items-center"
+      >
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 17 17"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.1"
+        >
+          <circle cx="7.2" cy="7.2" r="5.4"></circle>
+          <line x1="11.2" y1="11.2" x2="16" y2="16"></line>
+        </svg>
+      </button>
+
+      <button
+        data-open-wish
+        aria-label="Wishlist"
+        class="flex cursor-pointer items-center gap-1.5 text-[10px] tracking-[0.12em]"
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+          ></path>
+        </svg>
+        <span data-wish-count>0</span>
+      </button>
+
+      <button
+        data-open-cart
+        aria-label="Bolsa"
+        class="flex cursor-pointer items-center gap-1.5 text-[10px] tracking-[0.12em]"
+      >
+        <svg
+          width="15"
+          height="17"
+          viewBox="0 0 15 17"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.1"
+        >
+          <rect x="1" y="5" width="13" height="11"></rect>
+          <path d="M4.6 5.2V3.6a2.9 2.9 0 0 1 5.8 0v1.6"></path>
+        </svg>
+        <span data-cart-count>0</span>
+      </button>
+
+      <!-- Enlace al Panel Admin (visible solo para roles ADMIN / RH) -->
+      <a
+        href="/admin"
+        data-admin-nav
+        class="hidden items-center border border-current px-2.5 py-1 text-[9px] tracking-[0.2em] uppercase transition hover:bg-acc hover:border-acc hover:text-white"
+      >
+        Admin
+      </a>
+
+      <!--iniciar seccion -->
+      <a
+        href="/user/Login"
+        data-open-login
+        aria-label="Iniciar sesión"
+        class="flex cursor-pointer items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase"
+      >
+        <svg
+          width="15"
+          height="17"
+          viewBox="0 0 15 17"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.1"
+        >
+          <circle cx="7.5" cy="4.8" r="3.2"></circle>
+          <path d="M 1.5 15.5 C 1.5 12.2 4.2 9.5 7.5 9.5 C 10.8 9.5 13.5 12.2 13.5 15.5"></path>
+        </svg>
+        <span>Iniciar Sesión</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Fila de Navegación Móvil -->
+  <nav
+    class="cap no-scrollbar flex items-center gap-6 overflow-x-auto whitespace-nowrap px-5 pb-3 sm:hidden"
+    style="border-top:1px solid color-mix(in srgb, currentColor 18%, transparent);padding-top:10px"
+  >
+    <a href="/">Inicio</a>
+    <a href="/#catalogo" data-mega-m>Catálogo</a>
+    <a href="/#sucursales">Sucursales</a>
+    <a href="/user/pedidos">Mis Pedidos</a>
+    <a href="/#terminos">Términos</a>
+  </nav>
+
+  <!-- Sub-componentes Desplegables del Header -->
+  <MegaMenu
+    tiendas={tiendas}
+    categorias={categorias}
+    megaFeatured={megaFeatured}
+  />
+  <SearchPanel />
+</header>
+

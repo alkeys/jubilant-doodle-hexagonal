@@ -1,0 +1,121 @@
+---
+// src/components/layout/MegaMenu.astro
+import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+interface FeaturedProduct {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+}
+
+interface Props {
+  tiendas: TiendaResponse[];
+  categorias: CategoriaResponse[];
+  megaFeatured?: FeaturedProduct;
+}
+
+const { tiendas = [], categorias = [], megaFeatured } = Astro.props;
+---
+
+<!-- ── Mega Menú Desplegable (Catálogo y Sucursales) ── -->
+<div
+  data-mega
+  class="pointer-events-none absolute inset-x-0 top-full -translate-y-2.5 border-b border-line bg-white text-ink opacity-0 transition-all duration-[350ms] max-h-[calc(100vh-100px)] overflow-y-auto overscroll-contain"
+>
+  <div
+    class="mx-auto grid max-w-[1640px] gap-10 px-5 py-12 md:grid-cols-[1fr_1fr_1.2fr] lg:gap-16 lg:px-9"
+  >
+    <!-- Columna 1: Sucursales -->
+    <div>
+      <div class="cap-xs mb-6 text-muted">Sucursales Disponibles</div>
+      <div class="flex flex-col gap-3 text-[12px] tracking-[0.05em]">
+        <a
+          href="/#catalogo"
+          data-filter-tienda=""
+          class="hover:text-acc transition"
+        >
+          Todas las sucursales
+        </a>
+        {
+          tiendas.map((tienda) => (
+            <a
+              href={`/?tiendaId=${tienda.id}#catalogo`}
+              data-filter-tienda={tienda.id}
+              class="hover:text-acc transition"
+            >
+              {tienda.nombre}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Columna 2: Categorías -->
+    <div>
+      <div class="cap-xs mb-6 text-muted">Categorías</div>
+      <div class="flex flex-col gap-3 text-[12px] tracking-[0.05em]">
+        <a
+          href="/#catalogo"
+          data-filter-categoria=""
+          class="hover:text-acc transition"
+        >
+          Todas las categorías
+        </a>
+        {
+          categorias.map((cat) => (
+            <a
+              href={`/?categoriaId=${cat.id}#catalogo`}
+              data-filter-categoria={cat.id}
+              class="hover:text-acc transition"
+            >
+              {cat.nombre}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Columna 3: Producto Destacado -->
+    {
+      megaFeatured && (
+        <div
+          class="hidden flex-col items-start justify-end gap-4 border-l border-line pl-10 md:flex lg:pl-16"
+        >
+          <a
+            href={`/Productos/${megaFeatured.id}`}
+            class="relative block w-full overflow-hidden"
+          >
+            {megaFeatured.image && (
+              <img
+                src={megaFeatured.image}
+                alt={megaFeatured.name}
+                loading="lazy"
+                class="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+              />
+            )}
+            <span class="note absolute left-3 top-2.5 text-white/85">
+              destacado · ${megaFeatured.price.toFixed(2)}
+            </span>
+          </a>
+          <div class="text-[22px] leading-snug tracking-[0.14em]">
+            {megaFeatured.name.toUpperCase()}
+          </div>
+          <div class="max-w-[34ch] text-[12px] leading-loose text-soft">
+            {megaFeatured.description}
+          </div>
+          <a
+            href={`/Productos/${megaFeatured.id}`}
+            class="cap link-u"
+            style="letter-spacing:.2em"
+          >
+            Ver detalle
+          </a>
+        </div>
+      )
+    }
+  </div>
+</div>
+

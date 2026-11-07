@@ -82,6 +82,10 @@ export function setCartQty(key: string, quantity: number) {
   );
 }
 
+export function clearCart() {
+  cart.set([]);
+}
+
 export const wishlist = createPersistentStore<string[]>('njx-muse-wishlist', []);
 
 export function toggleWishlist(handle: string): boolean {

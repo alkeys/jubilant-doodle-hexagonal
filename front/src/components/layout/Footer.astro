@@ -1,0 +1,129 @@
+---
+// src/components/layout/Footer.astro
+import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+interface Props {
+  categorias: CategoriaResponse[];
+  tiendas: TiendaResponse[];
+}
+
+const { categorias = [], tiendas = [] } = Astro.props;
+
+const serviceLinks = [
+  "Envíos y entregas",
+  "Guía de tallas",
+  "Cambios y devoluciones",
+  "Contacto",
+];
+---
+
+<!-- ── Pie de Página (Footer) ── -->
+<footer class="mt-14 border-t border-line sm:mt-24 lg:mt-32">
+  <div
+    class="mx-auto grid max-w-[1640px] grid-cols-2 gap-7 px-4 pt-10 sm:gap-10 sm:px-5 sm:pt-20 lg:grid-cols-4 lg:gap-12 lg:px-9"
+  >
+    <!-- Columna 1: Categorías -->
+    <div class="flex flex-col gap-4">
+      <div class="cap-xs text-muted">Categorías</div>
+      {
+        categorias.map((cat) => (
+          <a
+            href={`/?categoriaId=${cat.id}#catalogo`}
+            data-filter-categoria={cat.id}
+            class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            {cat.nombre}
+          </a>
+        ))
+      }
+    </div>
+
+    <!-- Columna 2: Sucursales -->
+    <div class="flex flex-col gap-4">
+      <div class="cap-xs text-muted">Sucursales</div>
+      {
+        tiendas.map((tienda) => (
+          <a
+            href={`/?tiendaId=${tienda.id}#catalogo`}
+            data-filter-tienda={tienda.id}
+            class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            {tienda.nombre}
+          </a>
+        ))
+      }
+    </div>
+
+    <!-- Columna 3: Servicio al Cliente -->
+    <div class="flex flex-col gap-4">
+      <div class="cap-xs text-muted">Servicio</div>
+      {
+        serviceLinks.map((l) => (
+          <a
+            href="/#catalogo"
+            class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+          >
+            {l}
+          </a>
+        ))
+      }
+    </div>
+
+    <!-- Columna 4: Accesos Rápidos -->
+    <div class="flex flex-col gap-4">
+      <div class="cap-xs text-muted">Accesos</div>
+      <a
+        href="/#top-ventas"
+        class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+      >
+        Más vendidos
+      </a>
+      <a
+        href="/#sucursales"
+        class="text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+      >
+        Directorio de tiendas
+      </a>
+      <button
+        type="button"
+        data-open-wish
+        class="cursor-pointer text-left text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+      >
+        Favoritos
+      </button>
+      <button
+        type="button"
+        data-open-cart
+        class="cursor-pointer text-left text-[11px] tracking-[0.08em] text-soft hover:text-ink"
+      >
+        Bolsa de compra
+      </button>
+    </div>
+  </div>
+
+  <!-- Marca Tipográfica Editorial -->
+  <div class="mx-auto max-w-[1640px] px-5 pt-16 lg:px-9">
+    <div
+      class="overflow-hidden whitespace-nowrap text-center leading-[0.9] tracking-[0.06em] text-transparent"
+      style="font-size:clamp(56px,12.4vw,210px);-webkit-text-stroke:1px #d8d5cd"
+    >
+      NOBLE MUSE
+    </div>
+  </div>
+
+  <!-- Copyright e Información Legal -->
+  <div
+    class="mx-auto flex max-w-[1640px] flex-wrap justify-between gap-4 px-5 pb-10 pt-6 text-[10px] tracking-[0.1em] text-muted lg:px-9"
+  >
+    <span>
+      © <span data-year></span> Noble Muse — Catálogo Multitienda conectado a API
+      Hexagonal
+    </span>
+    <span class="flex flex-wrap gap-5">
+      <a href="/#catalogo">Catálogo</a>
+      <a href="/#sucursales">Sucursales</a>
+    </span>
+  </div>
+</footer>
+

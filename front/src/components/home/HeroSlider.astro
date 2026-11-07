@@ -1,0 +1,129 @@
+---
+// src/components/home/HeroSlider.astro
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+
+interface Props {
+  heroProductos: ProductoResponse[];
+  categoriaMap: Map<string, string>;
+}
+
+const { heroProductos = [], categoriaMap } = Astro.props;
+---
+
+<!-- ── Hero Slider Dinámico (Alimentado desde ProductosApi) ── -->
+{
+  heroProductos.length > 0 && (
+    <section
+      class="relative -mt-9 h-[calc(100vh-36px)] min-h-[600px] overflow-hidden bg-[#191936]"
+      style="margin-top:0"
+    >
+      {heroProductos.map((prod, i) => {
+        const imgHero =
+          prod.imagenes?.find((img) => img.esPrincipal) || prod.imagenes?.[0];
+        const catNombre = categoriaMap.get(prod.categoriaId) ?? "COLECCIÓN";
+        return (
+          <div
+            data-hero-slide={i}
+            class={
+              "absolute inset-0 transition-opacity duration-[900ms] " +
+              (i === 0 ? "opacity-100" : "pointer-events-none opacity-0")
+            }
+          >
+            {imgHero && (
+              <img
+                src={imgHero.url}
+                alt={prod.nombre}
+                class="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <div class="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-ink/30" />
+            <div class="absolute inset-x-5 bottom-14 flex flex-col items-start gap-5 text-white lg:inset-x-9">
+              <div class="text-[11px] tracking-[0.28em]">
+                {catNombre.toUpperCase()} · DESDE $
+                {(prod.precioMin ?? prod.precio ?? 0).toFixed(2)}
+              </div>
+              <div class="max-w-[20ch] text-[clamp(28px,3.4vw,46px)] font-normal leading-[1.15] tracking-[0.2em]">
+                {prod.nombre.toUpperCase()}
+              </div>
+              <p class="max-w-[46ch] text-[13px] text-white/85">
+                {prod.descripcion}
+              </p>
+              <div class="flex flex-wrap items-center gap-6">
+                <a
+                  href={`/Productos/${prod.id}`}
+                  class="cap link-u"
+                  style="letter-spacing:.22em"
+                >
+                  Ver producto
+                </a>
+                <a
+                  href="#catalogo"
+                  class="cap text-white/80 hover:text-white"
+                  style="letter-spacing:.22em"
+                >
+                  Explorar catálogo
+                </a>
+              </div>
+            </div>
+            <div class="note absolute right-5 top-[120px] text-white/75 lg:right-9">
+              {prod.talla ? `tallas: ${prod.talla} · ` : ""}stock:{" "}
+              {prod.stockTotal ?? prod.stock} u.
+            </div>
+          </div>
+        );
+      })}
+      <div class="absolute bottom-6 left-5 z-[3] flex gap-2 lg:left-9">
+        {heroProductos.map((_, i) => (
+          <button
+            data-hero-dot={i}
+            aria-label="Slide"
+            class={
+              "h-[2px] w-[34px] cursor-pointer border-none p-0 transition-colors duration-300 " +
+              (i === 0 ? "bg-white" : "bg-white/40")
+            }
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<script>
+  const slides = [...document.querySelectorAll<HTMLElement>("[data-hero-slide]")];
+  const dots = [...document.querySelectorAll<HTMLElement>("[data-hero-dot]")];
+
+  if (slides.length > 1) {
+    let hero = 0;
+    function showHero(i: number) {
+      hero = i;
+      slides.forEach((el) => {
+        const on = Number(el.dataset.heroSlide) === i;
+        el.classList.toggle("opacity-100", on);
+        el.classList.toggle("opacity-0", !on);
+        el.classList.toggle("pointer-events-none", !on);
+      });
+      dots.forEach((d) => {
+        const on = Number(d.dataset.heroDot) === i;
+        d.classList.toggle("bg-white", on);
+        d.classList.toggle("bg-white/40", !on);
+      });
+    }
+
+    let heroTimer = setInterval(
+      () => showHero((hero + 1) % slides.length),
+      6500
+    );
+
+    dots.forEach((d) =>
+      d.addEventListener("click", () => {
+        clearInterval(heroTimer);
+        showHero(Number(d.dataset.heroDot));
+        heroTimer = setInterval(
+          () => showHero((hero + 1) % slides.length),
+          6500
+        );
+      })
+    );
+  }
+</script>
+

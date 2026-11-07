@@ -1,0 +1,60 @@
+---
+// src/components/overlays/OrderThanksModal.astro
+---
+
+<!-- ── Modal de Confirmación de Pedido Real (Conectado a POST /api/v1/ventas) ── -->
+<div
+  data-thanks-root
+  class="fixed inset-0 z-[170] hidden items-center justify-center bg-ink/40 p-3 sm:p-6 [&.on]:flex"
+>
+  <div
+    class="flex w-[min(480px,100%)] flex-col gap-5 border border-line bg-white p-6 sm:p-8"
+  >
+    <div class="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+      <span class="cap-xs text-acc">TRANSACCIÓN REGISTRADA</span>
+      <button
+        data-thanks-close
+        class="cap cursor-pointer"
+        style="letter-spacing:.18em"
+      >
+        Cerrar
+      </button>
+    </div>
+    <div class="text-[20px] font-normal tracking-[0.18em] text-ink">
+      GRACIAS POR TU COMPRA
+    </div>
+    <p
+      data-thanks-summary
+      class="m-0 text-[12.5px] leading-[1.8] tracking-[0.04em] text-soft"
+    >
+      Tu pedido ha sido procesado y descontado del inventario de la sucursal.
+    </p>
+    <div
+      data-thanks-lines
+      class="max-h-[180px] overflow-y-auto border-y border-linesoft py-3 text-[11.5px] text-ink"
+    ></div>
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <a href="/user/account#mis-compras" class="btn-ink flex-1 p-4 text-center">
+        VER MIS COMPRAS
+      </a>
+      <button
+        type="button"
+        data-thanks-close
+        class="btn-ghost flex-1 p-4 text-center text-ink"
+      >
+        SEGUIR COMPRANDO
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Notificación Flotante (Toast) ── -->
+<div
+  data-toast
+  class="pointer-events-none fixed bottom-6 left-1/2 z-[320] -translate-x-1/2 opacity-0 transition-all duration-300"
+>
+  <p
+    class="cap-tag border border-line bg-white px-4 py-2.5 shadow-sm"
+    data-toast-text
+  ></p>
+</div>

@@ -1,0 +1,49 @@
+---
+// src/components/overlays/CartDrawer.astro
+---
+
+<!-- ── Drawer Lateral: Bolsa de Compra (Carrito) ── -->
+<aside
+  data-cart-drawer
+  class="fixed bottom-0 right-0 top-0 z-[160] flex w-[min(440px,92vw)] translate-x-[102%] flex-col border-l border-line bg-white transition-transform duration-[450ms] [&.on]:translate-x-0"
+>
+  <div
+    class="flex items-center justify-between border-b border-line px-7 pb-5 pt-7"
+  >
+    <span class="tracking-[0.24em] text-[11px]">
+      BOLSA DE COMPRA (<span data-cart-count>0</span>)
+    </span>
+    <button
+      data-drawer-close
+      class="cap cursor-pointer"
+      style="letter-spacing:.18em"
+    >
+      Cerrar
+    </button>
+  </div>
+
+  <!-- Barra de progreso de envío gratis -->
+  <div class="flex flex-col gap-3 border-b border-line px-7 py-5">
+    <div data-ship-msg class="text-[10px] tracking-[0.1em] text-soft"></div>
+    <div class="h-[2px] bg-linesoft">
+      <div
+        data-ship-bar
+        class="h-[2px] bg-acc transition-[width] duration-500"
+        style="width:0%"
+      ></div>
+    </div>
+  </div>
+
+  <!-- Lista de líneas del carrito -->
+  <div data-cart-lines class="flex-1 overflow-auto px-7 py-2"></div>
+
+  <!-- Subtotal y Checkout -->
+  <div class="flex flex-col gap-4 border-t border-line px-7 pb-8 pt-6">
+    <div class="flex justify-between text-[12px] tracking-[0.1em]">
+      <span>SUBTOTAL</span>
+      <span data-cart-subtotal>$0.00</span>
+    </div>
+    <button data-checkout class="btn-ink p-4">Finalizar compra</button>
+  </div>
+</aside>
+

@@ -1,0 +1,26 @@
+---
+// src/components/overlays/WishlistDrawer.astro
+---
+
+<!-- ── Drawer Lateral: Lista de Favoritos (Wishlist) ── -->
+<aside
+  data-wish-drawer
+  class="fixed bottom-0 right-0 top-0 z-[160] flex w-[min(440px,92vw)] translate-x-[102%] flex-col border-l border-line bg-white transition-transform duration-[450ms] [&.on]:translate-x-0"
+>
+  <div
+    class="flex items-center justify-between border-b border-line px-7 pb-5 pt-7"
+  >
+    <span class="tracking-[0.24em] text-[11px]">
+      FAVORITOS (<span data-wish-count>0</span>)
+    </span>
+    <button
+      data-drawer-close
+      class="cap cursor-pointer"
+      style="letter-spacing:.18em"
+    >
+      Cerrar
+    </button>
+  </div>
+  <div data-wish-lines class="flex-1 overflow-auto px-7 py-2"></div>
+</aside>
+

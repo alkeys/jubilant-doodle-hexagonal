@@ -1,0 +1,105 @@
+---
+// src/components/home/CatalogoFiltros.astro
+import type { CategoriaResponse } from "../../api/types/categorias/CategoriaResponse";
+import type { TiendaResponse } from "../../api/types/tiendas/TiendaResponse";
+
+interface Props {
+  tiendas: TiendaResponse[];
+  categorias: CategoriaResponse[];
+  tallasUnicas: string[];
+  maxPrecioCatalogo: number;
+}
+
+const {
+  tiendas = [],
+  categorias = [],
+  tallasUnicas = [],
+  maxPrecioCatalogo = 500,
+} = Astro.props;
+---
+
+<!-- ── Barra de Filtros Interactiva (Sucursal, Categoría, Talla, Precio, Orden) ── -->
+<div class="mb-10 border-y border-line py-4">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
+      <!-- Filtro por Sucursal -->
+      <div class="flex items-center gap-2">
+        <span class="cap-xs text-muted">Sucursal:</span>
+        <select
+          data-f-tienda
+          class="cap border border-line bg-white px-3 py-2 text-ink"
+        >
+          <option value="">Todas las sucursales</option>
+          {
+            tiendas.map((t) => (
+              <option value={t.id}>{t.nombre}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <!-- Filtro por Categoría -->
+      <div class="flex items-center gap-2">
+        <span class="cap-xs text-muted">Categoría:</span>
+        <select
+          data-f-categoria
+          class="cap border border-line bg-white px-3 py-2 text-ink"
+        >
+          <option value="">Todas las categorías</option>
+          {
+            categorias.map((c) => (
+              <option value={c.id}>{c.nombre}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <!-- Filtro por Talla -->
+      <div class="flex items-center gap-2">
+        <span class="cap-xs text-muted">Talla:</span>
+        <select
+          data-f-talla
+          class="cap border border-line bg-white px-3 py-2 text-ink"
+        >
+          <option value="">Todas</option>
+          {
+            tallasUnicas.map((talla) => (
+              <option value={talla}>{talla}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <!-- Filtro por Precio Máximo -->
+      <div class="flex items-center gap-3">
+        <span class="cap-xs text-muted">Máx:</span>
+        <input
+          data-f-price
+          type="range"
+          min="10"
+          max={maxPrecioCatalogo}
+          step="5"
+          value={maxPrecioCatalogo}
+          class="w-[120px]"
+        />
+        <span class="text-[11px] font-medium" data-f-price-label>
+          ${maxPrecioCatalogo}
+        </span>
+      </div>
+    </div>
+
+    <!-- Ordenamiento -->
+    <div class="flex items-center gap-2">
+      <span class="cap-xs text-muted">Ordenar:</span>
+      <select
+        data-f-sort
+        class="cap border border-line bg-white px-3 py-2 text-ink"
+      >
+        <option value="recent">Más recientes</option>
+        <option value="low">Precio: menor a mayor</option>
+        <option value="high">Precio: mayor a menor</option>
+      </select>
+    </div>
+  </div>
+</div>
+

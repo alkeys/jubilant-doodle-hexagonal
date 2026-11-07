@@ -1,0 +1,72 @@
+---
+// src/components/home/TopVentasSection.astro
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+import type { ProductoMasVendidoResponse } from "../../api/types/ventas/ProductoMasVendidoResponse";
+
+export interface TopProductoDetalle extends ProductoMasVendidoResponse {
+  producto: ProductoResponse;
+}
+
+interface Props {
+  topProductosDetalle: TopProductoDetalle[];
+}
+
+const { topProductosDetalle = [] } = Astro.props;
+---
+
+<!-- ── Ranking de Productos Más Vendidos (VentasApi) ── -->
+{
+  topProductosDetalle.length > 0 && (
+    <section
+      id="top-ventas"
+      class="mx-auto max-w-[1640px] scroll-mt-24 px-5 pt-24 lg:px-9"
+    >
+      <div class="mb-8 flex items-end justify-between border-b border-line pb-5">
+        <div>
+          <div class="cap-xs mb-1.5 text-muted">
+            FAVORITOS DE NUESTROS CLIENTES
+          </div>
+          <h2 class="m-0 text-[20px] font-normal tracking-[0.22em]">
+            MÁS VENDIDOS
+          </h2>
+        </div>
+        <span class="cap-xs text-muted">TOP VENTAS EN SUCURSALES</span>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {topProductosDetalle.map(({ producto, totalCantidadVendida }, idx) => {
+          const img =
+            producto.imagenes?.find((im) => im.esPrincipal) ||
+            producto.imagenes?.[0];
+          return (
+            <a
+              href={`/Productos/${producto.id}`}
+              class="group flex items-center gap-4 border border-line p-4 transition hover:border-ink"
+            >
+              {img && (
+                <img
+                  src={img.url}
+                  alt={producto.nombre}
+                  loading="lazy"
+                  class="h-24 w-20 flex-none object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                />
+              )}
+              <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span class="cap-xs text-acc">
+                  #{idx + 1} MÁS VENDIDO · {totalCantidadVendida} u. vendidas
+                </span>
+                <span class="cap-tag truncate group-hover:underline">
+                  {producto.nombre}
+                </span>
+                <span class="text-[12px] text-ink">
+                  ${(producto.precioMin ?? producto.precio ?? 0).toFixed(2)}
+                </span>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )
+}
+

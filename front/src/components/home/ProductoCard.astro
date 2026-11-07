@@ -1,0 +1,212 @@
+---
+// src/components/home/ProductoCard.astro
+import type { ProductoResponse } from "../../api/types/productos/ProductoResponse";
+
+interface Props {
+  producto: ProductoResponse;
+  index: number;
+  categoriaNombre: string;
+}
+
+const { producto, index, categoriaNombre } = Astro.props;
+
+const imagenPrincipal =
+  producto.imagenes?.find((img) => img.esPrincipal) || producto.imagenes?.[0];
+const imagenSecundaria =
+  producto.imagenes?.find((img) => img.id !== imagenPrincipal?.id) ||
+  producto.imagenes?.[1];
+const tieneRango =
+  producto.precioMin !== undefined &&
+  producto.precioMax !== undefined &&
+  producto.precioMin !== producto.precioMax;
+const tallas = producto.talla
+  ? producto.talla
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : ["ÚNICA"];
+const tiendasIds = (producto.tiendas ?? [])
+  .filter((t) => t.activo && t.stock > 0)
+  .map((t) => t.tiendaId)
+  .join(",");
+const precioBase = producto.precioMin ?? producto.precio ?? 0;
+---
+
+<!-- ── Tarjeta Individual de Producto ── -->
+<article
+  class="group relative flex flex-col"
+  data-card={producto.id}
+  data-prod-item
+  data-index={index}
+  data-categoria-id={producto.categoriaId}
+  data-categoria-nombre={categoriaNombre}
+  data-tiendas-ids={tiendasIds}
+  data-tallas={tallas.join(",")}
+  data-precio={precioBase}
+  data-color="0"
+>
+  <div class="relative aspect-[3/4] w-full overflow-hidden bg-tint">
+    <a href={`/Productos/${producto.id}`} class="absolute inset-0 block">
+      {
+        imagenPrincipal && (
+          <img
+            src={imagenPrincipal.url}
+            alt={producto.nombre}
+            loading="lazy"
+            class={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 group-hover:scale-[1.04] ${imagenSecundaria ? "group-hover:opacity-0" : ""}`}
+          />
+        )
+      }
+      {
+        imagenSecundaria && (
+          <img
+            src={imagenSecundaria.url}
+            alt={producto.nombre}
+            loading="lazy"
+            class="absolute inset-0 h-full w-full object-cover opacity-0 transition-[opacity,transform] duration-700 group-hover:scale-[1.04] group-hover:opacity-100"
+          />
+        )
+      }
+    </a>
+
+    <!-- Stock Total -->
+    <span
+      class="note pointer-events-none absolute bottom-2.5 left-3 text-white/85 mix-blend-difference"
+    >
+      stock total: {producto.stockTotal ?? producto.stock} u.
+    </span>
+
+    <!-- Etiqueta de Categoría -->
+    <span
+      class="cap-xs absolute left-3 top-3 px-2.5 py-1.5 text-white"
+      style={`background:${tieneRango ? "#6f5bd6" : "#191936"}`}
+    >
+      {categoriaNombre.toUpperCase()}
+    </span>
+
+    <!-- Botón de Favoritos -->
+    <button
+      data-card-wish={producto.id}
+      aria-label="Guardar en favoritos"
+      class="absolute right-2 top-2 flex h-8 w-8 cursor-pointer items-center justify-center text-[14px] text-ink/45 transition hover:text-acc"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path
+          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+        ></path>
+      </svg>
+    </button>
+
+    <!-- Barra de Acciones Rápidas (Hover) -->
+    <div
+      class="absolute inset-x-0 bottom-0 translate-y-full border-t border-line bg-white/95 px-3.5 py-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+    >
+      <div class="flex w-full items-center justify-between" data-card-bar>
+        <button
+          data-card-qv={producto.id}
+          class="cap cursor-pointer hover:text-acc"
+        >
+          Vista rápida
+        </button>
+        <button
+          data-card-open-sizes={producto.id}
+          class="cap cursor-pointer hover:text-acc"
+        >
+          + Agregar
+        </button>
+      </div>
+      <div
+        class="hidden w-full items-center justify-center gap-3"
+        data-card-sizes
+      >
+        <span class="cap-xs text-muted">Talla</span>
+        {
+          tallas.map((z) => (
+            <button
+              data-card-size={z}
+              data-h={producto.id}
+              class="cursor-pointer px-1 py-0.5 text-[11px] tracking-[0.1em] hover:text-acc"
+            >
+              {z}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Información del Producto -->
+  <div class="flex flex-1 flex-col justify-between gap-3 pt-4">
+    <div>
+      <a
+        href={`/Productos/${producto.id}`}
+        class="cap-tag block leading-relaxed hover:underline"
+      >
+        {producto.nombre}
+      </a>
+      <p class="line-clamp-2 mt-1 text-[12px] leading-relaxed text-soft">
+        {producto.descripcion}
+      </p>
+      {
+        producto.talla && (
+          <p class="cap-xs mt-1.5 text-muted">Tallas: {producto.talla}</p>
+        )
+      }
+    </div>
+
+    <div class="flex flex-col gap-2.5 border-t border-linesoft pt-3">
+      <div class="flex items-baseline justify-between">
+        {
+          tieneRango ? (
+            <span class="text-[13px] font-medium tracking-[0.04em] text-acc">
+              ${producto.precioMin!.toFixed(2)} – $
+              {producto.precioMax!.toFixed(2)}
+            </span>
+          ) : (
+            <span class="text-[13px] font-medium tracking-[0.04em] text-ink">
+              ${precioBase.toFixed(2)}
+            </span>
+          )
+        }
+
+        <a
+          href={`/Productos/${producto.id}`}
+          class="cap-xs link-u text-ink hover:text-acc"
+        >
+          Ver detalle
+        </a>
+      </div>
+
+      {
+        producto.tiendas && producto.tiendas.length > 0 && (
+          <div class="flex flex-col gap-1 bg-tint/45 p-2.5 text-[11px]">
+            <span class="cap-xs text-muted">Disponibilidad en sucursales:</span>
+            {producto.tiendas.map((tienda) => (
+              <div class="flex items-center justify-between text-soft">
+                <span class="truncate pr-2">{tienda.tiendaNombre}</span>
+                <span
+                  class={
+                    tienda.stock > 0 ? "font-medium text-ink" : "text-red-500"
+                  }
+                >
+                  ${tienda.precio.toFixed(2)} ·{" "}
+                  {tienda.stock > 0 ? `${tienda.stock} disp.` : "Agotado"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</article>
+

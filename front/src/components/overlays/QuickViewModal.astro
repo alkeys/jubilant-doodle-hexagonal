@@ -1,0 +1,22 @@
+---
+// src/components/overlays/QuickViewModal.astro
+---
+
+<!-- ── Fondo Oscuro Compartido para Drawers ── -->
+<div
+  data-overlay
+  class="pointer-events-none fixed inset-0 z-[150] bg-ink/30 opacity-0 transition-opacity duration-[400ms] [&.on]:pointer-events-auto [&.on]:opacity-100"
+></div>
+
+<!-- ── Modal de Vista Rápida de Producto (Quick View) ── -->
+<div
+  data-qv-root
+  class="fixed inset-0 z-[200] hidden items-center justify-center p-5 lg:p-10 [&.on]:flex"
+>
+  <div data-qv-dim class="absolute inset-0 bg-ink/30"></div>
+  <div
+    data-qv-panel
+    class="anim-pop relative grid max-h-[88vh] w-[min(1100px,100%)] overflow-auto bg-white md:grid-cols-2"
+  ></div>
+</div>
+
