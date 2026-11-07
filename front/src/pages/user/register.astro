@@ -385,6 +385,9 @@ const imgEditorial =
           password: payload.password,
         });
         localStorage.setItem("auth_user", JSON.stringify(authRes));
+        if (authRes.token) {
+          localStorage.setItem("auth_token", authRes.token);
+        }
 
         showMessage(
           `¡CUENTA CREADA EXITOSAMENTE PARA ${usuarioCreado.nombre.toUpperCase()}! ENTRANDO A TU PERFIL...`,
@@ -405,10 +408,22 @@ const imgEditorial =
         }, 900);
       }
     } catch (error: any) {
-      const apiMsg =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        "NO SE PUDO COMPLETAR EL REGISTRO. VERIFICA SI EL USUARIO O EMAIL YA ESTÁN EN USO.";
+      let apiMsg = "";
+      if (!error?.response) {
+        apiMsg =
+          "NO SE PUDO CONECTAR CON EL SERVIDOR (http://localhost:8080). VERIFICA QUE EL BACKEND ESTÉ EN EJECUCIÓN.";
+      } else if (
+        error.response.data?.validationErrors &&
+        typeof error.response.data.validationErrors === "object"
+      ) {
+        apiMsg = Object.values(error.response.data.validationErrors).join(" · ");
+      } else {
+        apiMsg =
+          error.response.data?.message ||
+          error.response.data?.mensaje ||
+          error.response.data?.error ||
+          "NO SE PUDO COMPLETAR EL REGISTRO. VERIFICA SI EL USUARIO O EMAIL YA ESTÁN EN USO.";
+      }
       showMessage(String(apiMsg).toUpperCase(), "error");
 
       if (submitBtn) {
