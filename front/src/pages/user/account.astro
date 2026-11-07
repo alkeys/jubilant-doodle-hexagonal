@@ -389,11 +389,19 @@ import Layout from "../../layouts/Layout.astro";
   import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
   import { AuthApi } from "../../api/services/auth/AuthApi";
   import { VentasApi } from "../../api/services/ventas/VentasApi";
+  import { ProductosApi } from "../../api/services/productos/ProductosApi";
+  import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
   import { isAdminOrRh } from "../../lib/authGuard";
 
   const usuariosApi = new UsuariosApi();
   const authApi = new AuthApi();
   const ventasApi = new VentasApi();
+  const productosApi = new ProductosApi();
+  const tiendasApi = new TiendasApi();
+
+  let clienteNombreActual = "";
+  const prodMap = new Map<string, string>();
+  const tiendaMap = new Map<string, string>();
 
   const loadingBox = document.getElementById("account-loading");
   const guestBox = document.getElementById("account-guest");
@@ -488,7 +496,15 @@ import Layout from "../../layouts/Layout.astro";
 
       // 2. Consultar historial de compras del cliente: GET /api/v1/ventas?clienteId={perfil.id}
       try {
-        const ventas = await ventasApi.listVentas({ clienteId: perfil.id });
+        clienteNombreActual = `${perfil.nombre} ${perfil.apellido}`;
+        const [ventas, productos, tiendas] = await Promise.all([
+          ventasApi.listVentas({ clienteId: perfil.id }),
+          productosApi.listProductos({ incluirInactivos: true }).catch(() => []),
+          tiendasApi.listTiendasActivas().catch(() => []),
+        ]);
+        productos.forEach((p) => prodMap.set(p.id, p.nombre));
+        tiendas.forEach((t) => tiendaMap.set(t.id, t.nombre));
+
         if (ordersCountEl) {
           ordersCountEl.textContent = `${ventas.length} ${
             ventas.length === 1 ? "compra registrada" : "compras registradas"
@@ -499,8 +515,18 @@ import Layout from "../../layouts/Layout.astro";
           ordersTableWrap.classList.remove("hidden");
           ordersTbody.innerHTML = ventas
             .map((v) => {
-              const fecha = v.fechaVenta
-                ? new Date(v.fechaVenta).toLocaleString("es-SV", {
+              const productoNombre =
+                prodMap.get(v.productoId) ||
+                `Producto (${v.productoId.slice(0, 8)})`;
+              const tiendaNombre =
+                tiendaMap.get(v.tiendaId) ||
+                `Sucursal (${v.tiendaId.slice(0, 8)})`;
+              const totalVenta = Number(
+                v.total ??
+                  Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+              );
+              const fecha = v.createdAt
+                ? new Date(v.createdAt).toLocaleString("es-SV", {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })
@@ -509,12 +535,12 @@ import Layout from "../../layouts/Layout.astro";
                 <tr class="border-b border-linesoft hover:bg-tint/25 transition">
                   <td class="note py-3.5 pr-4 text-muted">${v.id.slice(0, 8)}...</td>
                   <td class="py-3.5 px-4 font-medium text-ink">
-                    <a href="/Productos/${v.productoId}" class="hover:underline">${v.productoNombre}</a>
+                    <a href="/Productos/${v.productoId}" class="hover:underline">${productoNombre}</a>
                   </td>
-                  <td class="py-3.5 px-4 text-soft">${v.tiendaNombre}</td>
+                  <td class="py-3.5 px-4 text-soft">${tiendaNombre}</td>
                   <td class="py-3.5 px-4">${v.cantidad}</td>
                   <td class="py-3.5 px-4">$${Number(v.precioUnitario).toFixed(2)}</td>
-                  <td class="py-3.5 px-4 font-medium text-ink">$${Number(v.totalPagado).toFixed(2)}</td>
+                  <td class="py-3.5 px-4 font-medium text-ink">$${totalVenta.toFixed(2)}</td>
                   <td class="py-3.5 px-4 text-soft">${fecha}</td>
                   <td class="py-3.5 pl-4 text-right">
                     <button
@@ -550,6 +576,14 @@ import Layout from "../../layouts/Layout.astro";
     const ventaId = btn.dataset.verVenta!;
     try {
       const v = await ventasApi.getVentaById(ventaId);
+      const productoNombre =
+        prodMap.get(v.productoId) || `Producto (${v.productoId})`;
+      const tiendaNombre =
+        tiendaMap.get(v.tiendaId) || `Sucursal (${v.tiendaId})`;
+      const totalVenta = Number(
+        v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+      );
+      const fecha = v.createdAt ? new Date(v.createdAt).toLocaleString() : "—";
       if (receiptBody && receiptModal) {
         receiptBody.innerHTML = `
           <div class="flex justify-between border-b border-linesoft py-2">
@@ -558,15 +592,15 @@ import Layout from "../../layouts/Layout.astro";
           </div>
           <div class="flex justify-between border-b border-linesoft py-2">
             <span class="cap-xs text-muted">CLIENTE</span>
-            <span>${v.clienteNombreCompleto}</span>
+            <span>${clienteNombreActual}</span>
           </div>
           <div class="flex justify-between border-b border-linesoft py-2">
             <span class="cap-xs text-muted">SUCURSAL</span>
-            <span>${v.tiendaNombre}</span>
+            <span>${tiendaNombre}</span>
           </div>
           <div class="flex justify-between border-b border-linesoft py-2">
             <span class="cap-xs text-muted">PRODUCTO</span>
-            <span class="font-medium">${v.productoNombre}</span>
+            <span class="font-medium">${productoNombre}</span>
           </div>
           <div class="flex justify-between border-b border-linesoft py-2">
             <span class="cap-xs text-muted">CANTIDAD × PRECIO UNITARIO</span>
@@ -574,11 +608,11 @@ import Layout from "../../layouts/Layout.astro";
           </div>
           <div class="flex justify-between border-b border-linesoft py-2 text-[14px] font-medium">
             <span class="cap-xs text-ink">TOTAL PAGADO</span>
-            <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+            <span class="text-acc">$${totalVenta.toFixed(2)}</span>
           </div>
           <div class="flex justify-between pt-1">
             <span class="cap-xs text-muted">FECHA Y HORA</span>
-            <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+            <span class="note">${fecha}</span>
           </div>
         `;
         receiptModal.classList.add("on");

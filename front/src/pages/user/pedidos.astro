@@ -172,12 +172,19 @@ import Layout from "../../layouts/Layout.astro";
 <script>
   import { UsuariosApi } from "../../api/services/usuarios/UsuariosApi";
   import { VentasApi } from "../../api/services/ventas/VentasApi";
+  import { ProductosApi } from "../../api/services/productos/ProductosApi";
+  import { TiendasApi } from "../../api/services/tiendas/TiendasApi";
   import type { VentaResponse } from "../../api/types/ventas/VentaResponse";
 
   const usuariosApi = new UsuariosApi();
   const ventasApi = new VentasApi();
+  const productosApi = new ProductosApi();
+  const tiendasApi = new TiendasApi();
 
   let allPedidos: VentaResponse[] = [];
+  let clienteNombreActual = "";
+  const prodMap = new Map<string, string>();
+  const tiendaMap = new Map<string, string>();
 
   const loadingBox = document.getElementById("pedidos-loading");
   const guestBox = document.getElementById("pedidos-guest");
@@ -199,10 +206,10 @@ import Layout from "../../layouts/Layout.astro";
 
     const filtered = allPedidos.filter((v) => {
       if (!q) return true;
+      const pName = (prodMap.get(v.productoId) || v.productoId).toLowerCase();
+      const tName = (tiendaMap.get(v.tiendaId) || v.tiendaId).toLowerCase();
       return (
-        v.productoNombre.toLowerCase().includes(q) ||
-        v.tiendaNombre.toLowerCase().includes(q) ||
-        v.id.toLowerCase().includes(q)
+        pName.includes(q) || tName.includes(q) || v.id.toLowerCase().includes(q)
       );
     });
 
@@ -215,8 +222,15 @@ import Layout from "../../layouts/Layout.astro";
     emptyBox.classList.add("hidden");
     listBox.innerHTML = filtered
       .map((v) => {
-        const fecha = v.fechaVenta
-          ? new Date(v.fechaVenta).toLocaleString("es-SV", {
+        const productoNombre =
+          prodMap.get(v.productoId) || `Producto (${v.productoId.slice(0, 8)})`;
+        const tiendaNombre =
+          tiendaMap.get(v.tiendaId) || `Sucursal (${v.tiendaId.slice(0, 8)})`;
+        const totalVenta = Number(
+          v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+        );
+        const fecha = v.createdAt
+          ? new Date(v.createdAt).toLocaleString("es-SV", {
               dateStyle: "medium",
               timeStyle: "short",
             })
@@ -231,10 +245,10 @@ import Layout from "../../layouts/Layout.astro";
                 <span class="note text-soft">· ${fecha}</span>
               </div>
               <a href="/Productos/${v.productoId}" class="mt-1 text-[15px] font-medium tracking-[0.08em] text-ink hover:underline">
-                ${v.productoNombre.toUpperCase()}
+                ${productoNombre.toUpperCase()}
               </a>
               <div class="text-[12px] text-soft">
-                Sucursal: <strong class="font-normal text-ink">${v.tiendaNombre}</strong> · Cantidad: <strong class="font-normal text-ink">${v.cantidad} u.</strong> × $${Number(v.precioUnitario).toFixed(2)}
+                Sucursal: <strong class="font-normal text-ink">${tiendaNombre}</strong> · Cantidad: <strong class="font-normal text-ink">${v.cantidad} u.</strong> × $${Number(v.precioUnitario).toFixed(2)}
               </div>
             </div>
 
@@ -242,7 +256,7 @@ import Layout from "../../layouts/Layout.astro";
               <div class="text-right">
                 <div class="cap-xs text-muted">TOTAL PAGADO</div>
                 <div class="text-[18px] font-medium tracking-[0.06em] text-acc">
-                  $${Number(v.totalPagado).toFixed(2)}
+                  $${totalVenta.toFixed(2)}
                 </div>
               </div>
               <button
@@ -261,7 +275,16 @@ import Layout from "../../layouts/Layout.astro";
 
   async function initPedidos() {
     try {
-      const perfil = await usuariosApi.getMiPerfil();
+      const [perfil, productos, tiendas] = await Promise.all([
+        usuariosApi.getMiPerfil(),
+        productosApi.listProductos({ incluirInactivos: true }).catch(() => []),
+        tiendasApi.listTiendasActivas().catch(() => []),
+      ]);
+
+      clienteNombreActual = `${perfil.nombre} ${perfil.apellido}`;
+      productos.forEach((p) => prodMap.set(p.id, p.nombre));
+      tiendas.forEach((t) => tiendaMap.set(t.id, t.nombre));
+
       allPedidos = await ventasApi.listVentas({ clienteId: perfil.id });
 
       const totalUnits = allPedidos.reduce(
@@ -269,7 +292,11 @@ import Layout from "../../layouts/Layout.astro";
         0
       );
       const totalAmount = allPedidos.reduce(
-        (acc, v) => acc + Number(v.totalPagado || 0),
+        (acc, v) =>
+          acc +
+          Number(
+            v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+          ),
         0
       );
 
@@ -298,6 +325,15 @@ import Layout from "../../layouts/Layout.astro";
     if (!btn) return;
     const id = btn.dataset.openReceipt!;
     const v = await ventasApi.getVentaById(id);
+    const productoNombre =
+      prodMap.get(v.productoId) || `Producto (${v.productoId})`;
+    const tiendaNombre =
+      tiendaMap.get(v.tiendaId) || `Sucursal (${v.tiendaId})`;
+    const totalVenta = Number(
+      v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+    );
+    const fecha = v.createdAt ? new Date(v.createdAt).toLocaleString() : "—";
+
     if (receiptBody && receiptModal) {
       receiptBody.innerHTML = `
         <div class="flex justify-between border-b border-linesoft py-2">
@@ -306,15 +342,15 @@ import Layout from "../../layouts/Layout.astro";
         </div>
         <div class="flex justify-between border-b border-linesoft py-2">
           <span class="cap-xs text-muted">CLIENTE</span>
-          <span>${v.clienteNombreCompleto}</span>
+          <span>${clienteNombreActual}</span>
         </div>
         <div class="flex justify-between border-b border-linesoft py-2">
           <span class="cap-xs text-muted">SUCURSAL DE DESPACHO</span>
-          <span>${v.tiendaNombre}</span>
+          <span>${tiendaNombre}</span>
         </div>
         <div class="flex justify-between border-b border-linesoft py-2">
           <span class="cap-xs text-muted">ARTÍCULO</span>
-          <span class="font-medium">${v.productoNombre}</span>
+          <span class="font-medium">${productoNombre}</span>
         </div>
         <div class="flex justify-between border-b border-linesoft py-2">
           <span class="cap-xs text-muted">CANTIDAD × PRECIO UNITARIO</span>
@@ -322,11 +358,11 @@ import Layout from "../../layouts/Layout.astro";
         </div>
         <div class="flex justify-between border-b border-linesoft py-2 text-[14px] font-medium">
           <span class="cap-xs text-ink">TOTAL PAGADO</span>
-          <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+          <span class="text-acc">$${totalVenta.toFixed(2)}</span>
         </div>
         <div class="flex justify-between pt-1">
           <span class="cap-xs text-muted">FECHA Y HORA</span>
-          <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+          <span class="note">${fecha}</span>
         </div>
       `;
       receiptModal.classList.add("on");

@@ -183,12 +183,22 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   const notify = (msg: string) => (window as any).adminToast?.(msg);
 
+  const userMap = new Map<string, string>();
+  const tiendaMap = new Map<string, string>();
+  const prodMap = new Map<string, string>();
+
   async function initData() {
     const [productos, tiendas, usuarios] = await Promise.all([
-      productosApi.listProductos({ incluirInactivos: false }),
+      productosApi.listProductos({ incluirInactivos: true }),
       tiendasApi.listTiendasActivas(),
       usuariosApi.getUsuariosFiltradosPorRol().catch(() => []),
     ]);
+
+    usuarios.forEach((u) =>
+      userMap.set(u.id, `${u.nombre} ${u.apellido} (@${u.nombreDeUsuario})`)
+    );
+    tiendas.forEach((t) => tiendaMap.set(t.id, t.nombre));
+    productos.forEach((p) => prodMap.set(p.id, p.nombre));
 
     const userOpts = usuarios
       .map(
@@ -224,9 +234,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
             <span class="cap-xs text-acc">#${idx + 1} TOP VENTAS</span>
             <span class="note text-muted">${t.totalCantidadVendida} u.</span>
           </div>
-          <div class="font-medium text-[13px] text-ink truncate">${t.productoNombre}</div>
+          <div class="font-medium text-[13px] text-ink truncate">${
+            t.nombreProducto || prodMap.get(t.productoId) || t.productoId
+          }</div>
           <div class="text-[12px] text-soft">Recaudado: <strong class="text-ink">$${Number(
-            t.montoTotalRecaudado
+            t.totalRecaudado ?? 0
           ).toFixed(2)}</strong></div>
         </div>
       `
@@ -240,7 +252,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const ventas = await ventasApi.listVentas({ clienteId, productoId });
 
     const totalRevenue = ventas.reduce(
-      (acc, v) => acc + Number(v.totalPagado || 0),
+      (acc, v) => acc + Number(v.total ?? 0),
       0
     );
     revenueEl.textContent = `RECAUDACIÓN FILTRADA: $${totalRevenue.toFixed(2)}`;
@@ -251,25 +263,36 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
 
     tbody.innerHTML = ventas
-      .map(
-        (v) => `
+      .map((v) => {
+        const clienteNombre =
+          userMap.get(v.clienteId) || `Cliente (${v.clienteId.slice(0, 8)})`;
+        const productoNombre =
+          prodMap.get(v.productoId) || `Producto (${v.productoId.slice(0, 8)})`;
+        const tiendaNombre =
+          tiendaMap.get(v.tiendaId) || `Sucursal (${v.tiendaId.slice(0, 8)})`;
+        const totalVenta = Number(
+          v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+        );
+        return `
         <tr class="border-b border-linesoft hover:bg-tint/20 transition">
           <td class="note py-3.5 pr-3 text-muted">${v.id.slice(0, 8)}</td>
-          <td class="py-3.5 px-3">${v.clienteNombreCompleto}</td>
-          <td class="py-3.5 px-3 font-medium text-ink">${v.productoNombre}</td>
-          <td class="py-3.5 px-3 text-soft">${v.tiendaNombre}</td>
+          <td class="py-3.5 px-3">${clienteNombre}</td>
+          <td class="py-3.5 px-3 font-medium text-ink">${productoNombre}</td>
+          <td class="py-3.5 px-3 text-soft">${tiendaNombre}</td>
           <td class="py-3.5 px-3">${v.cantidad}</td>
-          <td class="py-3.5 px-3 font-medium text-ink">$${Number(
-            v.totalPagado
-          ).toFixed(2)}</td>
+          <td class="py-3.5 px-3 font-medium text-ink">$${totalVenta.toFixed(
+            2
+          )}</td>
           <td class="py-3.5 pl-3 text-right">
-            <button type="button" data-ver-venta="${v.id}" class="cap-xs link-u text-acc cursor-pointer">
+            <button type="button" data-ver-venta="${
+              v.id
+            }" class="cap-xs link-u text-acc cursor-pointer">
               Ver detalle
             </button>
           </td>
         </tr>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
@@ -316,6 +339,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     ) as HTMLElement | null;
     if (!btn) return;
     const v = await ventasApi.getVentaById(btn.dataset.verVenta!);
+    const clienteNombre =
+      userMap.get(v.clienteId) || `Cliente (${v.clienteId})`;
+    const productoNombre =
+      prodMap.get(v.productoId) || `Producto (${v.productoId})`;
+    const tiendaNombre =
+      tiendaMap.get(v.tiendaId) || `Sucursal (${v.tiendaId})`;
+    const totalVenta = Number(
+      v.total ?? Number(v.precioUnitario || 0) * Number(v.cantidad || 1)
+    );
+    const fecha = v.createdAt ? new Date(v.createdAt).toLocaleString() : "—";
+
     detailBody.innerHTML = `
       <div class="flex justify-between border-b border-linesoft py-2">
         <span class="cap-xs text-muted">FOLIO UUID</span>
@@ -323,15 +357,15 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       </div>
       <div class="flex justify-between border-b border-linesoft py-2">
         <span class="cap-xs text-muted">CLIENTE</span>
-        <span>${v.clienteNombreCompleto}</span>
+        <span>${clienteNombre}</span>
       </div>
       <div class="flex justify-between border-b border-linesoft py-2">
         <span class="cap-xs text-muted">SUCURSAL</span>
-        <span>${v.tiendaNombre}</span>
+        <span>${tiendaNombre}</span>
       </div>
       <div class="flex justify-between border-b border-linesoft py-2">
         <span class="cap-xs text-muted">PRODUCTO</span>
-        <span class="font-medium">${v.productoNombre}</span>
+        <span class="font-medium">${productoNombre}</span>
       </div>
       <div class="flex justify-between border-b border-linesoft py-2">
         <span class="cap-xs text-muted">CANTIDAD × PRECIO UNIT.</span>
@@ -339,11 +373,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       </div>
       <div class="flex justify-between border-b border-linesoft py-2 font-medium">
         <span class="cap-xs text-ink">TOTAL PAGADO</span>
-        <span class="text-acc">$${Number(v.totalPagado).toFixed(2)}</span>
+        <span class="text-acc">$${totalVenta.toFixed(2)}</span>
       </div>
       <div class="flex justify-between pt-1">
         <span class="cap-xs text-muted">FECHA</span>
-        <span class="note">${new Date(v.fechaVenta).toLocaleString()}</span>
+        <span class="note">${fecha}</span>
       </div>
     `;
     detailModal.classList.add("on");

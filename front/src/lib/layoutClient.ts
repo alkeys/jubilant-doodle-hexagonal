@@ -399,7 +399,12 @@ export function initLayoutClient() {
           productoId: p.id,
           cantidad: l.quantity,
         });
-        ventasRealizadas.push(venta);
+        ventasRealizadas.push({
+          ...venta,
+          productoNombre: p.name,
+          tiendaNombre: tiendaMatch.tiendaNombre,
+          montoTotal: Number(venta.total ?? p.price * l.quantity),
+        });
       }
 
       // 3. Vaciar el carrito y mostrar recibo en el modal de confirmación
@@ -409,7 +414,7 @@ export function initLayoutClient() {
       const summaryEl = $("[data-thanks-summary]");
       const linesEl = $("[data-thanks-lines]");
       const totalPagado = ventasRealizadas.reduce(
-        (acc, v) => acc + (v.totalPagado || 0),
+        (acc, v) => acc + Number(v.montoTotal || 0),
         0
       );
 
@@ -425,7 +430,7 @@ export function initLayoutClient() {
                 <div class="cap-tag">${esc(v.productoNombre)} (x${v.cantidad})</div>
                 <div class="note text-muted">${esc(v.tiendaNombre)} · folio ${esc(v.id.slice(0, 8))}</div>
               </div>
-              <span class="font-medium">${fmt(v.totalPagado)}</span>
+              <span class="font-medium">${fmt(v.montoTotal)}</span>
             </div>`
           )
           .join("");
