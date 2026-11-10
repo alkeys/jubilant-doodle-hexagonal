@@ -4,6 +4,61 @@ Sistema integral de comercio electrónico y gestión empresarial para la cadena 
 
 ---
 
+## 🖼️ Galería del sistema
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://postimg.cc/BjMz1vbf">
+        <img src="https://i.postimg.cc/VN8Pprcv/screenshot-2026-11-10-09-27-04.png" alt="Portal de cliente" width="420">
+      </a>
+      <br>🛍️ <strong>Portal de cliente</strong>
+    </td>
+    <td align="center">
+      <a href="https://postimg.cc/HVmvZM7r">
+        <img src="https://i.postimg.cc/hPQFGbD1/screenshot-2026-11-10-09-29-07.png" alt="Panel de administración" width="420">
+      </a>
+      <br>⚙️ <strong>Panel de administración</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://postimg.cc/FdcGGFrk">
+        <img src="https://i.postimg.cc/85X3psx4/screenshot-2026-11-10-09-29-40.png" alt="Edición de producto" width="420">
+      </a>
+      <br>📦 <strong>Edición de productos</strong>
+    </td>
+    <td align="center">
+      <a href="https://postimg.cc/pyfqFdcq">
+        <img src="https://i.postimg.cc/G3NN68Fw/screenshot-2026-11-10-09-30-08.png" alt="Gestión de categorías" width="420">
+      </a>
+      <br>🏷️ <strong>Gestión de categorías</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://postimg.cc/pyfqFdcq">
+        <img src="https://i.postimg.cc/G3NN68Fw/screenshot-2026-11-10-09-30-08.png" alt="Gestión de sucursales" width="420">
+      </a>
+      <br>🏪 <strong>Gestión de sucursales</strong>
+    </td>
+    <td align="center">
+      <a href="https://postimg.cc/pyfqFdcq">
+        <img src="https://i.postimg.cc/G3NN68Fw/screenshot-2026-11-10-09-30-08.png" alt="Usuarios y roles" width="420">
+      </a>
+      <br>👥 <strong>Usuarios y roles</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <a href="https://postimg.cc/pyfqFdcq">
+        <img src="https://i.postimg.cc/G3NN68Fw/screenshot-2026-11-10-09-30-08.png" alt="Ventas y reportes" width="420">
+      </a>
+      <br>📊 <strong>Ventas y reportes</strong>
+    </td>
+  </tr>
+</table>
+
 ## 📁 Estructura del Repositorio (Monorepo)
 
 ```text
